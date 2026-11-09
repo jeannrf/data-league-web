@@ -1,0 +1,18 @@
+{
+  "projects": {
+    "default": "demo-data-league",
+    "prod": "data-league-web"
+  },
+  "targets": {
+    "data-league-web": {
+      "hosting": {
+        "app": [
+          "data-league-2026"
+        ],
+        "legacy": [
+          "data-league-web"
+        ]
+      }
+    }
+  }
+}

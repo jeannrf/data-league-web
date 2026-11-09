@@ -1,0 +1,852 @@
+<title>Data League · Identidad web</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: una liga deportiva contada con datos. Secciones oscuras con "bandas" de color pleno
+   (amarillo, azul) que rompen el ritmo; numerales varsity, marcador LED, cinta amarilla y la red de nodos del Perú. */
+:root{
+  color-scheme: dark;
+  /* Colores oficiales (muestreados del PDF del kick-off) */
+  --bg:#070A10;          /* fondo */
+  --surface:#2D3A59;     /* bordes, superficies */
+  --blue:#4162FF;        /* LEAGUE, tracks, gráficos */
+  --yellow:#FFDE41;      /* acento: fechas, botón principal */
+  --text:#F4F7FC;
+  --muted:#9DA5B5;
+  /* Derivados (solo tintes de los oficiales) */
+  --bg-2:#0B1120;
+  --line:#1A2440;
+  --blue-soft:#7B93FF;   /* azul para texto pequeño (contraste AA) */
+  --blue-ink:#0E1A5C;
+  /* Tipografía */
+  --f-display:"Archivo", "Arial Black", Arial, sans-serif;
+  --f-body:"Inter", Arial, Helvetica, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r:6px;
+  --wrap:1120px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);font-size:16px;line-height:1.55;margin:0;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+a{color:var(--blue-soft)}
+:focus-visible{outline:2px solid var(--yellow);outline-offset:3px}
+.wrap{max-width:var(--wrap);margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.eyebrow b{color:var(--yellow);font-weight:700}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.02}
+h2{font-size:clamp(30px,5vw,52px);font-weight:850;font-stretch:112%;letter-spacing:-.01em;text-transform:uppercase}
+h2 .y{color:var(--yellow)} h2 .b{color:var(--blue)}
+p{margin:0}
+.lead{color:var(--muted);font-size:18px;max-width:60ch}
+section{padding-block:clamp(56px,9vw,104px)}
+.sec-head{display:grid;gap:14px;margin-bottom:40px}
+
+/* ---------- Barra de vista ---------- */
+.viewbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:#0B1120ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.viewbar .wrap{display:flex;gap:6px;align-items:center;padding-block:8px;overflow-x:auto}
+.viewbar span{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-right:8px;white-space:nowrap}
+.viewbar a{font-family:var(--f-mono);font-size:12px;color:var(--text);text-decoration:none;padding:6px 10px;border:1px solid var(--surface);border-radius:99px;white-space:nowrap}
+.viewbar a:hover{border-color:var(--yellow);color:var(--yellow)}
+
+/* ---------- Landing: nav ---------- */
+.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:20px}
+.logo{font-family:var(--f-display);font-weight:900;font-stretch:115%;font-size:20px;letter-spacing:.01em;color:var(--text);text-decoration:none;white-space:nowrap}
+.logo span{color:var(--blue)}
+.nav ul{display:flex;gap:26px;list-style:none;margin:0;padding:0;font-size:14px}
+.nav ul a{color:var(--muted);text-decoration:none}
+.nav ul a:hover{color:var(--text)}
+@media (max-width:860px){.nav ul{display:none}}
+
+/* ---------- Botones ---------- */
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-stretch:108%;text-transform:uppercase;letter-spacing:.04em;font-size:15px;padding:14px 22px;border-radius:var(--r);text-decoration:none;border:2px solid transparent;cursor:pointer;transition:transform .15s, box-shadow .15s, background .15s}
+.btn-primary{background:var(--yellow);color:var(--bg);box-shadow:4px 4px 0 var(--blue)}
+.btn-primary:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--blue)}
+.btn-primary:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--blue)}
+.btn-secondary{background:transparent;color:var(--text);border-color:var(--surface)}
+.btn-secondary:hover{border-color:var(--text)}
+.btn-sm{font-size:13px;padding:10px 16px}
+.btn .arr{font-family:var(--f-mono)}
+@media (prefers-reduced-motion: reduce){.btn{transition:none}}
+
+/* ---------- Hero ---------- */
+.hero{position:relative;overflow:hidden;padding-block:24px 0}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;min-height:520px}
+.hero-copy{position:relative;z-index:2;display:grid;gap:22px;padding-block:24px 48px}
+.hero h1{font-size:clamp(54px,10vw,128px);font-weight:900;font-stretch:118%;letter-spacing:-.02em;line-height:.9;text-transform:uppercase}
+.hero h1 span{display:block;color:var(--blue)}
+.tagline{font-family:var(--f-display);font-weight:700;font-stretch:100%;font-size:clamp(18px,2.4vw,24px)}
+.tagline i{font-style:normal;color:var(--yellow)}
+.hero-actions{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.map-wrap{position:relative;aspect-ratio:.78;max-width:100%;width:100%}
+#peru{position:absolute;inset:0;width:100%;height:100%}
+.map-tag{position:absolute;font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.08em;white-space:nowrap}
+.map-tag b{color:var(--yellow)}
+@media (max-width:860px){
+  .hero-grid{grid-template-columns:1fr;min-height:0}
+  .map-wrap{position:absolute;right:-30%;top:0;width:85%;opacity:.45;z-index:0}
+  .map-tag{display:none}
+}
+
+/* Marcador / cuenta regresiva */
+.scoreboard{display:inline-grid;grid-template-columns:repeat(4,auto);gap:4px;background:#04060B;border:1px solid var(--surface);border-radius:var(--r);padding:10px 12px;width:max-content;max-width:100%}
+.scoreboard .cell{display:grid;justify-items:center;gap:4px;min-width:56px;padding:6px 8px;background:var(--bg-2);border-radius:4px}
+.scoreboard .num{font-family:var(--f-mono);font-weight:700;font-size:30px;line-height:1;color:var(--yellow);font-variant-numeric:tabular-nums;text-shadow:0 0 12px #FFDE4155}
+.scoreboard .lbl{font-family:var(--f-mono);font-size:9px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+.sb-caption{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+
+/* Cinta amarilla */
+.tape{background:var(--yellow);color:var(--bg);position:relative;overflow:hidden;border-block:3px solid var(--bg);transform:rotate(-1.2deg);margin:28px -10px 0;z-index:3}
+.tape-track{display:flex;gap:40px;padding-block:12px;white-space:nowrap;width:max-content;animation:marquee 38s linear infinite}
+.tape-track span{font-family:var(--f-display);font-weight:850;font-stretch:112%;text-transform:uppercase;font-size:15px;letter-spacing:.04em;display:inline-flex;gap:40px;align-items:center}
+.tape-track span::after{content:"";width:9px;height:9px;background:var(--bg);transform:rotate(45deg);display:inline-block}
+@keyframes marquee{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion: reduce){.tape-track{animation:none}}
+
+/* ---------- Sobre / sedes ---------- */
+.about{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:start}
+.about > *{min-width:0}
+.about .body{display:grid;gap:18px;color:var(--muted);max-width:60ch}
+.about .body strong{color:var(--text);font-weight:600}
+.pennants{display:grid;gap:10px}
+.pennant{display:grid;grid-template-columns:72px 1fr auto;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg-2)}
+.pennant .yr{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.pennant .nm{font-family:var(--f-display);font-weight:800;font-stretch:110%;text-transform:uppercase;font-size:18px}
+.pennant .st{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pennant.now{border-color:var(--yellow);background:linear-gradient(90deg,#FFDE4114,transparent 60%)}
+.pennant.now .st{color:var(--yellow)}
+.pennant.next{opacity:.6;border-style:dashed}
+@media (max-width:860px){.about{grid-template-columns:1fr}}
+
+/* ---------- Tracks (banda azul) ---------- */
+.band-blue{background:var(--blue);color:#fff;position:relative;overflow:hidden}
+.band-blue::before{content:"";position:absolute;inset:0;background-image:radial-gradient(#ffffff26 1.2px,transparent 1.3px);background-size:22px 22px;pointer-events:none}
+.band-blue .wrap{position:relative}
+.band-blue .eyebrow{color:#E3E8FF}
+.band-blue .eyebrow b{color:var(--yellow)}
+.band-blue .lead{color:#E3E8FF}
+.tracks{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.track{background:var(--bg);color:var(--text);border-radius:var(--r);padding:20px 18px 22px;display:grid;grid-template-rows:auto auto 1fr auto;gap:14px;min-width:0;position:relative;transition:transform .2s}
+.track:hover{transform:translateY(-4px)}
+.track .no{font-family:var(--f-display);font-weight:900;font-stretch:125%;font-size:64px;line-height:.85;color:transparent;-webkit-text-stroke:1.5px var(--blue-soft)}
+.track:hover .no{color:var(--yellow);-webkit-text-stroke-color:var(--yellow)}
+.track h3{font-size:17px;font-weight:800;font-stretch:105%;text-transform:uppercase;line-height:1.15}
+.track p{font-size:14px;color:var(--muted)}
+.track svg{width:100%;height:38px;display:block}
+@media (max-width:1000px){.tracks{grid-template-columns:repeat(2,1fr)}.track:last-child{grid-column:1/-1}}
+@media (max-width:520px){.tracks{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: reduce){.track{transition:none}}
+
+/* ---------- Reglas del juego ---------- */
+.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.rule{padding:28px 24px;display:grid;gap:10px;border-right:1px solid var(--line);min-width:0}
+.rule:last-child{border-right:0}
+.rule .k{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;color:var(--yellow);text-transform:uppercase}
+.rule .v{font-family:var(--f-display);font-weight:900;font-stretch:115%;font-size:40px;line-height:1;text-transform:uppercase}
+.rule p{color:var(--muted);font-size:15px}
+@media (max-width:760px){.rules{grid-template-columns:1fr}.rule{border-right:0;border-bottom:1px solid var(--line)}.rule:last-child{border-bottom:0}}
+
+/* ---------- Fixture (cronograma) ---------- */
+.fixture{display:grid;gap:0;border-top:1px solid var(--line)}
+.fx{display:grid;grid-template-columns:110px 130px 1fr auto;align-items:center;gap:18px;padding:20px 4px;border-bottom:1px solid var(--line)}
+.fx .d{font-family:var(--f-display);font-weight:900;font-stretch:115%;font-size:44px;line-height:.9;color:var(--blue);font-variant-numeric:tabular-nums}
+.fx .m{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.fx .t{font-size:18px;font-weight:600;min-width:0}
+.fx .t small{display:block;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:2px}
+.fx.final .d{color:var(--yellow)}
+.fx.final .t{color:var(--yellow);font-family:var(--f-display);font-weight:900;font-stretch:115%;text-transform:uppercase;font-size:24px}
+@media (max-width:640px){.fx{grid-template-columns:64px 1fr;row-gap:6px}.fx .d{font-size:34px;grid-row:span 2}.fx .m{grid-column:2}.fx .t{grid-column:2}.fx .pill{grid-column:2;justify-self:start}}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:99px;border:1px solid var(--surface);color:var(--muted);white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.virtual{color:var(--blue-soft);border-color:#4162FF66}
+.pill.presencial{color:var(--bg);background:var(--yellow);border-color:var(--yellow)}
+.pill.soon{color:var(--muted);border-style:dashed}
+.pill.soon::before{background:transparent;border:1px solid currentColor}
+
+/* ---------- Ticket de la final ---------- */
+.ticket{display:grid;grid-template-columns:1fr 220px;margin-top:40px;filter:drop-shadow(0 20px 40px #0008)}
+.ticket > div{min-width:0}
+.tk-main{background:var(--yellow);color:var(--bg);padding:28px 30px;border-radius:var(--r) 0 0 var(--r);display:grid;gap:14px;
+  -webkit-mask:radial-gradient(circle at 100% 0,#0000 12px,#000 12.5px) top right/100% 51% no-repeat,radial-gradient(circle at 100% 100%,#0000 12px,#000 12.5px) bottom right/100% 51% no-repeat;
+  mask:radial-gradient(circle at 100% 0,#0000 12px,#000 12.5px) top right/100% 51% no-repeat,radial-gradient(circle at 100% 100%,#0000 12px,#000 12.5px) bottom right/100% 51% no-repeat}
+.tk-main .eyebrow{color:#3B3410}
+.tk-main h3{font-size:clamp(34px,5vw,56px);font-weight:900;font-stretch:120%;text-transform:uppercase}
+.tk-meta{display:flex;flex-wrap:wrap;gap:10px 28px;font-family:var(--f-mono);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.tk-meta div span{display:block;font-size:10px;font-weight:500;letter-spacing:.14em;color:#3B3410}
+.tk-stub{background:var(--yellow);color:var(--bg);border-left:2px dashed var(--bg);border-radius:0 var(--r) var(--r) 0;padding:24px 20px;display:grid;align-content:space-between;gap:16px;
+  -webkit-mask:radial-gradient(circle at 0 0,#0000 12px,#000 12.5px) top left/100% 51% no-repeat,radial-gradient(circle at 0 100%,#0000 12px,#000 12.5px) bottom left/100% 51% no-repeat;
+  mask:radial-gradient(circle at 0 0,#0000 12px,#000 12.5px) top left/100% 51% no-repeat,radial-gradient(circle at 0 100%,#0000 12px,#000 12.5px) bottom left/100% 51% no-repeat}
+.tk-stub .adm{font-family:var(--f-display);font-weight:900;font-stretch:115%;font-size:22px;text-transform:uppercase;line-height:1}
+.bars{display:flex;align-items:flex-end;gap:2px;height:46px}
+.bars i{display:block;flex:1;background:var(--bg);border-radius:1px}
+@media (max-width:640px){
+  .ticket{grid-template-columns:1fr}
+  .tk-main{border-radius:var(--r) var(--r) 0 0;-webkit-mask:none;mask:none}
+  .tk-stub{border-left:0;border-top:2px dashed var(--bg);border-radius:0 0 var(--r) var(--r);-webkit-mask:none;mask:none}
+}
+
+/* ---------- Impacto (banda amarilla) ---------- */
+.band-yellow{background:var(--yellow);color:var(--bg)}
+.band-yellow .eyebrow{color:#3B3410}
+.band-yellow .eyebrow b{color:var(--bg)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+.stat{padding:8px 28px;border-left:3px solid var(--bg);display:grid;gap:8px;min-width:0}
+.stat .n{font-family:var(--f-display);font-weight:900;font-stretch:112%;font-size:clamp(56px,7vw,96px);line-height:.85;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat .l{font-family:var(--f-mono);font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+.stat p{font-size:15px;color:#2A250B;max-width:28ch}
+@media (max-width:760px){.stats{grid-template-columns:1fr;gap:28px}}
+
+/* ---------- Próximamente ---------- */
+.soon-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+.soon-grid > *{min-width:0}
+.panel{border:1px solid var(--line);border-radius:var(--r);padding:28px;background:var(--bg-2);display:grid;gap:18px;align-content:start}
+.panel h3{font-size:24px;font-weight:850;font-stretch:112%;text-transform:uppercase}
+.podium{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:end}
+.podium div{border:1px dashed var(--surface);border-radius:4px;display:grid;place-items:center;gap:6px;padding:14px 6px;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.podium .p1{height:150px;border-color:var(--yellow);color:var(--yellow)}
+.podium .p2{height:118px}.podium .p3{height:96px}
+.podium b{font-family:var(--f-display);font-size:30px;font-stretch:120%;font-weight:900;color:inherit}
+.redact{display:inline-block;width:72px;height:12px;background:repeating-linear-gradient(-45deg,var(--surface) 0 4px,transparent 4px 7px);border-radius:2px}
+.jurors{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.juror{aspect-ratio:1;max-width:100%;border:1px dashed var(--surface);border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:900;font-size:26px;color:var(--surface)}
+@media (max-width:760px){.soon-grid{grid-template-columns:1fr}}
+
+/* ---------- Aliados ---------- */
+.partners{display:grid;gap:28px}
+.p-row{display:grid;gap:12px}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{border:1px solid var(--line);border-radius:4px;padding:16px 20px;font-family:var(--f-mono);font-size:13px;color:var(--muted);background:var(--bg-2);min-width:120px;text-align:center}
+.chip.lg{padding:22px 28px;font-size:14px;color:var(--text)}
+
+/* ---------- FAQ ---------- */
+.faq{display:grid;border-top:1px solid var(--line);max-width:820px}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;padding:20px 2px;font-weight:600;font-size:17px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-family:var(--f-mono);color:var(--yellow);font-size:20px;line-height:1;transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details p{padding:0 2px 20px;color:var(--muted);max-width:65ch}
+
+/* ---------- Footer / CTA final ---------- */
+.cta-final{border-top:1px solid var(--line);text-align:left}
+.cta-box{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:28px}
+.cta-box h2{font-size:clamp(40px,7vw,84px);font-stretch:120%}
+footer.site{border-top:1px solid var(--line);padding-block:28px;color:var(--muted);font-size:14px}
+footer.site .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between}
+
+/* ================= GUÍA DE MARCA ================= */
+.guide{background:var(--bg-2);border-top:4px solid var(--yellow)}
+.guide h2{font-size:clamp(28px,4vw,44px)}
+.g-block{display:grid;gap:22px;padding-block:44px;border-bottom:1px solid var(--line)}
+.g-block:last-child{border-bottom:0}
+.g-block h3{font-size:22px;font-weight:850;font-stretch:110%;text-transform:uppercase}
+.g-block h3 small{font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.12em;color:var(--yellow);display:block;margin-bottom:6px}
+.g-note{color:var(--muted);max-width:68ch}
+.pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.pillar{border:1px solid var(--line);border-radius:var(--r);padding:22px;display:grid;gap:8px;background:var(--bg)}
+.pillar b{font-family:var(--f-display);font-weight:900;font-stretch:115%;text-transform:uppercase;font-size:22px}
+.pillar span{color:var(--muted);font-size:14px}
+@media (max-width:760px){.pillars{grid-template-columns:1fr}}
+
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.sw{border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:var(--bg);display:grid;min-width:0}
+.sw .c{height:92px}
+.sw .i{padding:12px;display:grid;gap:3px}
+.sw .i b{font-size:14px}
+.sw .i code{font-family:var(--f-mono);font-size:12px;color:var(--text)}
+.sw .i span{font-size:12px;color:var(--muted)}
+@media (max-width:900px){.swatches{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:480px){.swatches{grid-template-columns:repeat(2,1fr)}}
+.ratio{display:flex;height:40px;border-radius:var(--r);overflow:hidden;border:1px solid var(--line)}
+.ratio div{display:flex;align-items:center;padding-left:10px;font-family:var(--f-mono);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden}
+.contrast{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.ct{border-radius:var(--r);padding:16px;display:grid;gap:6px;border:1px solid var(--line);min-width:0}
+.ct .s{font-weight:700;font-size:18px}
+.ct .r{font-family:var(--f-mono);font-size:12px}
+@media (max-width:760px){.contrast{grid-template-columns:repeat(2,1fr)}}
+
+.type-spec{display:grid;gap:12px}
+.ts{display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:baseline;padding:18px 0;border-top:1px solid var(--line)}
+.ts > *{min-width:0}
+.ts .meta{font-family:var(--f-mono);font-size:12px;color:var(--muted);line-height:1.6}
+.ts .meta b{color:var(--text);display:block;font-size:13px}
+@media (max-width:700px){.ts{grid-template-columns:1fr;gap:8px}}
+
+.motifs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.motif{border:1px solid var(--line);border-radius:var(--r);background:var(--bg);overflow:hidden;display:grid;grid-template-rows:150px auto;min-width:0}
+.motif .demo{position:relative;display:grid;place-items:center;overflow:hidden;border-bottom:1px solid var(--line)}
+.motif .txt{padding:16px 18px;display:grid;gap:6px}
+.motif .txt b{font-size:15px}
+.motif .txt span{font-size:13px;color:var(--muted)}
+@media (max-width:900px){.motifs{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:540px){.motifs{grid-template-columns:1fr}}
+
+.comp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.comp{border:1px solid var(--line);border-radius:var(--r);background:var(--bg);padding:22px;display:grid;gap:16px;align-content:start;min-width:0}
+.comp .lbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+@media (max-width:760px){.comp-grid{grid-template-columns:1fr}}
+.status{font-family:var(--f-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 9px;border-radius:4px;border:1px solid}
+.s-reg{color:var(--muted);border-color:var(--surface)}
+.s-obs{color:#FFB547;border-color:#FFB54766}
+.s-val{color:var(--blue-soft);border-color:#7B93FF66}
+.s-fin{color:var(--bg);background:var(--yellow);border-color:var(--yellow)}
+.s-no{color:#8A93A6;border-color:#2D3A59;text-decoration:line-through}
+.s-ret{color:#FF7A85;border-color:#FF7A8566}
+.field{display:grid;gap:6px}
+.field label{font-size:13px;font-weight:600}
+.field input,.field select{font:inherit;font-size:15px;color:var(--text);background:var(--bg-2);border:1px solid var(--surface);border-radius:var(--r);padding:12px 14px;width:100%}
+.field input:focus{outline:none;border-color:var(--yellow);box-shadow:0 0 0 3px #FFDE4126}
+.field .hint{font-size:12px;color:var(--muted)}
+.steps{display:flex;gap:6px}
+.steps i{flex:1;height:6px;border-radius:3px;background:var(--surface)}
+.steps i.on{background:var(--yellow)}
+.steps i.cur{background:var(--blue)}
+
+.rhythm{display:flex;gap:6px;flex-wrap:wrap}
+.rhythm div{flex:1;min-width:90px;height:110px;border-radius:4px;display:flex;align-items:flex-end;padding:8px;font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line)}
+.do-dont{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dd{border-radius:var(--r);padding:22px;display:grid;gap:10px;background:var(--bg);border:1px solid var(--line)}
+.dd h4{margin:0;font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.dd.do h4{color:var(--yellow)} .dd.dont h4{color:#FF7A85}
+.dd ul{margin:0;padding-left:18px;display:grid;gap:8px;color:var(--muted);font-size:15px}
+@media (max-width:760px){.do-dont{grid-template-columns:1fr}}
+
+.codebox{position:relative;background:#04060B;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.codebox pre{margin:0;padding:20px;overflow-x:auto;font-family:var(--f-mono);font-size:12.5px;line-height:1.65;color:#C9D1E3;white-space:pre-wrap;word-break:break-word;max-height:520px;overflow-y:auto}
+.codebox pre.nowrap{white-space:pre;word-break:normal}
+.codebox .copy{position:absolute;top:10px;right:10px}
+.copy{font-family:var(--f-mono);font-size:12px;font-weight:700;background:var(--yellow);color:var(--bg);border:0;border-radius:4px;padding:8px 12px;cursor:pointer}
+</style>
+
+<nav class="viewbar" aria-label="Secciones de esta página">
+  <div class="wrap">
+    <span>Data League · branding</span>
+    <a href="#landing">Landing de muestra</a>
+    <a href="#guia">Guía de marca</a>
+    <a href="#tokens">Tokens para Tailwind</a>
+    <a href="#prompt">Prompt para Claude Design</a>
+  </div>
+</nav>
+
+<!-- ======================== LANDING ======================== -->
+<div id="landing">
+<header class="wrap nav">
+  <a class="logo" href="#landing">DATA <span>LEAGUE</span></a>
+  <ul>
+    <li><a href="#tracks">Tracks</a></li>
+    <li><a href="#requisitos">Requisitos</a></li>
+    <li><a href="#cronograma">Cronograma</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+  <a class="btn btn-primary btn-sm" href="#cta">Postula</a>
+</header>
+
+<section class="hero" aria-label="Portada">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <div class="eyebrow"><b>Temporada 2026</b> · Sede UNI, Lima</div>
+      <h1>Data<span>League</span></h1>
+      <p class="tagline">Aprende. Demuestra. <i>Conecta.</i></p>
+      <p class="lead">La liga interuniversitaria de ciencia de datos. Cuatro jornadas virtuales y una final presencial el 5 de diciembre en la UNI. Postula solo o con tu equipo de 2 a 4.</p>
+      <div style="display:grid;gap:8px">
+        <div class="sb-caption">Cierre de postulaciones · 29 nov · 23:59 (hora Perú)</div>
+        <div class="scoreboard" role="timer" aria-live="off">
+          <div class="cell"><span class="num" id="cd-d">21</span><span class="lbl">Días</span></div>
+          <div class="cell"><span class="num" id="cd-h">19</span><span class="lbl">Horas</span></div>
+          <div class="cell"><span class="num" id="cd-m">16</span><span class="lbl">Min</span></div>
+          <div class="cell"><span class="num" id="cd-s">00</span><span class="lbl">Seg</span></div>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#cta">Postula ahora <span class="arr">→</span></a>
+        <a class="btn btn-secondary" href="#tracks">Ver tracks</a>
+      </div>
+    </div>
+    <div class="map-wrap" aria-hidden="true">
+      <canvas id="peru"></canvas>
+      <div class="map-tag" style="left:30%;top:47%"><b>●</b> UNI · LIMA −12.02°</div>
+      <div class="map-tag" style="left:2%;top:4%">RED DE TALENTO · 2026</div>
+    </div>
+  </div>
+  <div class="tape" aria-hidden="true">
+    <div class="tape-track">
+      <span>Postulaciones hasta el 29 nov</span><span>Final presencial · 5 dic · UNI</span><span>Equipos de 2 a 4</span><span>5 tracks</span><span>Gratis para estudiantes</span>
+      <span>Postulaciones hasta el 29 nov</span><span>Final presencial · 5 dic · UNI</span><span>Equipos de 2 a 4</span><span>5 tracks</span><span>Gratis para estudiantes</span>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="about-h">
+  <div class="wrap about">
+    <div class="sec-head" style="margin:0">
+      <div class="eyebrow"><b>La liga</b> · ¿Qué es Data League?</div>
+      <h2 id="about-h">La Ivy League <span class="y">de los datos</span></h2>
+      <div class="body">
+        <p>La Ivy League empezó como una liga deportiva entre universidades. La competencia constante creó un estándar de excelencia y una comunidad que dura hasta hoy.</p>
+        <p><strong>Data League busca el mismo efecto con los datos:</strong> una competencia anual que reúne talento en ciencia de datos, analítica y datos abiertos, y que rota de sede entre las grandes casas de estudio.</p>
+      </div>
+    </div>
+    <div class="pennants" aria-label="Sedes de la liga">
+      <div class="eyebrow" style="margin-bottom:4px">Sedes rotativas</div>
+      <div class="pennant now"><span class="yr">2026</span><span class="nm">UNI</span><span class="st">Sede actual</span></div>
+      <div class="pennant next"><span class="yr">Próx.</span><span class="nm">La Agraria</span><span class="st">Por confirmar</span></div>
+      <div class="pennant next"><span class="yr">Próx.</span><span class="nm">San Marcos</span><span class="st">Por confirmar</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="band-blue" id="tracks" aria-labelledby="tracks-h">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow"><b>5 tracks</b> · Elige uno por equipo</div>
+      <h2 id="tracks-h">Juega en tu cancha</h2>
+      <p class="lead">Cada track parte de un tema que ya te interesa. No necesitas haber ido a una hackathon antes.</p>
+    </div>
+    <div class="tracks">
+      <article class="track">
+        <div class="no">01</div>
+        <svg viewBox="0 0 120 38" aria-hidden="true"><g fill="#4162FF"><rect x="0" y="22" width="14" height="16"/><rect x="20" y="12" width="14" height="26"/><rect x="40" y="18" width="14" height="20"/><rect x="60" y="4" width="14" height="34"/></g><rect x="80" y="10" width="14" height="28" fill="#FFDE41"/></svg>
+        <h3>Estado, economía y sociedad</h3>
+        <p>Presupuesto público, empleo, pobreza y transparencia.</p>
+      </article>
+      <article class="track">
+        <div class="no">02</div>
+        <svg viewBox="0 0 120 38" aria-hidden="true"><polyline points="0,24 22,24 30,8 38,34 46,18 54,24 76,24 84,14 90,24 120,24" fill="none" stroke="#4162FF" stroke-width="3" stroke-linejoin="round"/><circle cx="84" cy="14" r="4" fill="#FFDE41"/></svg>
+        <h3>Salud, vida y bienestar</h3>
+        <p>Atención médica, nutrición, salud mental y prevención.</p>
+      </article>
+      <article class="track">
+        <div class="no">03</div>
+        <svg viewBox="0 0 120 38" aria-hidden="true"><g fill="#4162FF"><rect x="0" y="0" width="10" height="10"/><rect x="12" y="0" width="10" height="10" opacity=".5"/><rect x="24" y="12" width="10" height="10"/><rect x="0" y="24" width="10" height="10" opacity=".5"/><rect x="36" y="24" width="10" height="10"/><rect x="48" y="12" width="10" height="10" opacity=".5"/><rect x="60" y="0" width="10" height="10"/><rect x="72" y="24" width="10" height="10" opacity=".5"/><rect x="84" y="12" width="10" height="10"/></g><rect x="96" y="0" width="10" height="10" fill="#FFDE41"/><rect x="108" y="24" width="10" height="10" fill="#4162FF"/></svg>
+        <h3>Ciudades, producción y ambiente</h3>
+        <p>Movilidad, agro, energía, residuos y clima.</p>
+      </article>
+      <article class="track">
+        <div class="no">04</div>
+        <svg viewBox="0 0 120 38" aria-hidden="true"><rect x="0" y="4" width="50" height="30" rx="3" fill="none" stroke="#4162FF" stroke-width="2.5"/><text x="25" y="25" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="700" font-size="14" fill="#FFDE41">3–2</text><path d="M62 19h50M62 10h34M62 28h42" stroke="#4162FF" stroke-width="3" stroke-linecap="round"/></svg>
+        <h3>Deporte, cultura y entretenimiento</h3>
+        <p>Rendimiento deportivo, música, cine, turismo y videojuegos.</p>
+      </article>
+      <article class="track">
+        <div class="no">05</div>
+        <svg viewBox="0 0 120 38" aria-hidden="true"><g stroke="#4162FF" stroke-width="2"><line x1="10" y1="28" x2="40" y2="10"/><line x1="40" y1="10" x2="72" y2="24"/><line x1="72" y1="24" x2="104" y2="8"/><line x1="40" y1="10" x2="60" y2="34"/></g><g fill="#4162FF"><circle cx="10" cy="28" r="4"/><circle cx="40" cy="10" r="4"/><circle cx="60" cy="34" r="4"/><circle cx="72" cy="24" r="4"/></g><circle cx="104" cy="8" r="5" fill="#FFDE41"/></svg>
+        <h3>Educación, ciencia y tecnología</h3>
+        <p>Aprendizaje, deserción, investigación e innovación.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="requisitos" aria-labelledby="req-h">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow"><b>Reglas del juego</b> · Requisitos para postular</div>
+      <h2 id="req-h">¿Quién puede <span class="y">jugar?</span></h2>
+    </div>
+    <div class="rules">
+      <div class="rule"><span class="k">Requisito 1</span><span class="v">Estudiante</span><p>Activo de pregrado universitario o de instituto.</p></div>
+      <div class="rule"><span class="k">Requisito 2</span><span class="v">18+</span><p>Quien postula debe tener 18 años o más.</p></div>
+      <div class="rule"><span class="k">Requisito 3</span><span class="v">2 – 4</span><p>Personas por equipo, contando al líder. También puedes postular solo y te ayudamos a armar equipo.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="cronograma" aria-labelledby="cro-h" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow"><b>Fixture</b> · Cronograma 2026</div>
+      <h2 id="cro-h">Fechas <span class="y">importantes</span></h2>
+    </div>
+    <div class="fixture">
+      <div class="fx"><span class="d">27</span><span class="m">Noviembre</span><span class="t"><small>Jornada 1</small>Kick off y storytelling con datos</span><span class="pill virtual">Virtual</span></div>
+      <div class="fx"><span class="d">29</span><span class="m">Noviembre</span><span class="t"><small>23:59 · hora Perú</small>Cierre de postulaciones</span><span class="pill">Online</span></div>
+      <div class="fx"><span class="d">30</span><span class="m">Noviembre</span><span class="t"><small>Jornada 2</small>Machine learning</span><span class="pill virtual">Virtual</span></div>
+      <div class="fx"><span class="d">01</span><span class="m">Diciembre</span><span class="t"><small>Jornada 3</small>IA con aplicaciones y MVP</span><span class="pill virtual">Virtual</span></div>
+      <div class="fx"><span class="d">02</span><span class="m">Diciembre</span><span class="t"><small>Jornada 4</small>Gobierno de datos</span><span class="pill virtual">Virtual</span></div>
+      <div class="fx final"><span class="d">05</span><span class="m">Diciembre</span><span class="t">Gran final</span><span class="pill presencial">Presencial · UNI</span></div>
+    </div>
+
+    <div class="ticket" aria-label="Entrada a la final">
+      <div class="tk-main">
+        <div class="eyebrow">Data League 2026 · Gran final</div>
+        <h3>05 · DIC · UNI</h3>
+        <div class="tk-meta">
+          <div><span>Sede</span>UNI, Lima</div>
+          <div><span>Modalidad</span>Presencial</div>
+          <div><span>Cupo</span>~120 personas</div>
+          <div><span>Equipo</span>2 a 4</div>
+        </div>
+      </div>
+      <div class="tk-stub">
+        <div class="adm">Admite<br>1 equipo</div>
+        <div class="bars" id="bars" aria-hidden="true"></div>
+        <div class="eyebrow" style="color:#3B3410;font-size:10px">QR en tu postulación</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band-yellow" aria-labelledby="imp-h">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow"><b>Impacto esperado</b> · Temporada 2026</div>
+      <h2 id="imp-h">El marcador que buscamos</h2>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="n">300+</span><span class="l">Jóvenes</span><p>que buscamos interesar en postular.</p></div>
+      <div class="stat"><span class="n">120</span><span class="l">En la final</span><p>participantes en el Demo Day presencial.</p></div>
+      <div class="stat"><span class="n">20+</span><span class="l">Comunidades</span><p>universitarias y de datos que se suman.</p></div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="soon-h">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow"><b>Premios y jurado</b></div>
+      <h2 id="soon-h">Se anuncian <span class="y">pronto</span></h2>
+    </div>
+    <div class="soon-grid">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between"><h3>Premios</h3><span class="pill soon">Próximamente</span></div>
+        <div class="podium">
+          <div class="p2"><b>2</b><span class="redact"></span></div>
+          <div class="p1"><b>1</b><span class="redact" style="background:repeating-linear-gradient(-45deg,#FFDE41 0 4px,transparent 4px 7px)"></span></div>
+          <div class="p3"><b>3</b><span class="redact"></span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="row" style="justify-content:space-between"><h3>Jurado</h3><span class="pill soon">Próximamente</span></div>
+        <div class="jurors"><div class="juror">?</div><div class="juror">?</div><div class="juror">?</div><div class="juror">?</div></div>
+        <p class="g-note" style="font-size:14px">Especialistas de la academia, el Estado y la industria.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="ali-h" style="padding-top:0">
+  <div class="wrap partners">
+    <div class="sec-head" style="margin:0">
+      <div class="eyebrow"><b>Aliados</b> · Quiénes hacen posible la liga</div>
+      <h2 id="ali-h">Aliados</h2>
+    </div>
+    <div class="p-row">
+      <div class="eyebrow">Institucionales</div>
+      <div class="chips"><div class="chip lg">DMC Institute</div><div class="chip lg">Data Science</div><div class="chip lg">FIEECS · UNI</div></div>
+    </div>
+    <div class="p-row">
+      <div class="eyebrow">Community &amp; partners</div>
+      <div class="chips"><div class="chip">Unicode</div><div class="chip">IEEE CIS UNMSM</div><div class="chip">DSC PUCP</div><div class="chip">LEAD UTEC</div><div class="chip">+ comunidades</div></div>
+    </div>
+    <p class="g-note" style="font-size:13px">En producción van los logos originales en blanco (monocromo) sobre el fondo oscuro, todos a la misma altura.</p>
+  </div>
+</section>
+
+<section id="faq" aria-labelledby="faq-h" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow"><b>FAQ</b></div>
+      <h2 id="faq-h">Preguntas frecuentes</h2>
+    </div>
+    <div class="faq">
+      <details open><summary>¿Tiene costo participar?</summary><p>No. Postular y participar es gratis.</p></details>
+      <details><summary>¿Puedo postular sin equipo?</summary><p>Sí. Postula de forma individual y marca que quieres que la organización te asigne un equipo.</p></details>
+      <details><summary>¿Las jornadas son presenciales?</summary><p>Las cuatro jornadas son virtuales. Solo la final del 5 de diciembre es presencial, en la UNI.</p></details>
+      <details><summary>¿Puedo editar mi postulación?</summary><p>Sí, hasta el 29 de noviembre a las 23:59 (hora de Perú) desde “Mi postulación”.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="cta-final" id="cta" aria-labelledby="cta-h">
+  <div class="wrap cta-box">
+    <div style="display:grid;gap:14px">
+      <div class="eyebrow"><b>Temporada 2026</b> · Inscripciones abiertas</div>
+      <h2 id="cta-h">Entra a<br><span class="b">la liga.</span></h2>
+    </div>
+    <a class="btn btn-primary" href="#landing">Postula ahora <span class="arr">→</span></a>
+  </div>
+</section>
+<footer class="site"><div class="wrap"><span>© 2026 Data League · Aprende. Demuestra. Conecta.</span><span>Bases · Privacidad · Contacto</span></div></footer>
+</div>
+
+<!-- ======================== GUÍA ======================== -->
+<div class="guide" id="guia">
+  <div class="wrap">
+    <div class="g-block" style="padding-top:64px">
+      <div class="eyebrow"><b>Guía de marca</b> · Web Data League</div>
+      <h2>Una liga deportiva <span class="y">contada con datos</span></h2>
+      <p class="g-note">La identidad del kick-off (fondo casi negro, azul y amarillo, red de nodos del Perú) se mantiene igual. Lo que cambia es cómo se usa en la web: tomamos el lenguaje de una liga (marcador, fixture, numerales de camiseta, entrada a la final) y lo combinamos con gráficos de datos. Así cada sección tiene su propio elemento visual y la página deja de ser una lista de bloques iguales.</p>
+      <div class="pillars">
+        <div class="pillar"><b>Aprende</b><span>Tono cercano. Explicamos sin jerga: “No necesitas haber ido a una hackathon”.</span></div>
+        <div class="pillar"><b>Demuestra</b><span>Energía de competencia: marcador, fixture, podio, numerales grandes.</span></div>
+        <div class="pillar"><b>Conecta</b><span>La red de nodos: personas, universidades y comunidades que se unen.</span></div>
+      </div>
+    </div>
+
+    <div class="g-block">
+      <h3><small>01</small>Color</h3>
+      <p class="g-note">Los seis colores salen del kick-off. Los tres de abajo son tintes de los mismos, para casos puntuales.</p>
+      <div class="swatches">
+        <div class="sw"><div class="c" style="background:#070A10;border-bottom:1px solid var(--line)"></div><div class="i"><b>Noche</b><code>#070A10</code><span>Fondo base</span></div></div>
+        <div class="sw"><div class="c" style="background:#4162FF"></div><div class="i"><b>Azul liga</b><code>#4162FF</code><span>“LEAGUE”, tracks, gráficos</span></div></div>
+        <div class="sw"><div class="c" style="background:#FFDE41"></div><div class="i"><b>Amarillo</b><code>#FFDE41</code><span>CTA, fechas, final</span></div></div>
+        <div class="sw"><div class="c" style="background:#F4F7FC"></div><div class="i"><b>Blanco</b><code>#F4F7FC</code><span>Texto principal</span></div></div>
+        <div class="sw"><div class="c" style="background:#2D3A59"></div><div class="i"><b>Pizarra</b><code>#2D3A59</code><span>Bordes, superficies</span></div></div>
+        <div class="sw"><div class="c" style="background:#9DA5B5"></div><div class="i"><b>Gris</b><code>#9DA5B5</code><span>Texto secundario</span></div></div>
+      </div>
+      <div class="row">
+        <span class="eyebrow">Tintes:</span>
+        <span class="pill" style="color:#F4F7FC"><span style="width:14px;height:14px;background:#0B1120;border-radius:3px;border:1px solid #2D3A59"></span>#0B1120 superficie elevada</span>
+        <span class="pill" style="color:#7B93FF">#7B93FF azul para texto pequeño</span>
+        <span class="pill" style="color:#F4F7FC"><span style="width:14px;height:14px;background:#1A2440;border-radius:3px"></span>#1A2440 líneas</span>
+      </div>
+      <div style="display:grid;gap:8px">
+        <span class="eyebrow">Proporción en pantalla</span>
+        <div class="ratio">
+          <div style="flex:62;background:#070A10;color:#9DA5B5">Noche 62%</div>
+          <div style="flex:14;background:#F4F7FC;color:#070A10">Texto 14%</div>
+          <div style="flex:14;background:#4162FF;color:#fff">Azul 14%</div>
+          <div style="flex:10;background:#FFDE41;color:#070A10">Amarillo 10%</div>
+        </div>
+      </div>
+      <div class="contrast">
+        <div class="ct" style="background:#070A10"><span class="s" style="color:#FFDE41">Amarillo</span><span class="r" style="color:#9DA5B5">15:1 · AA ✓ todo uso</span></div>
+        <div class="ct" style="background:#070A10"><span class="s" style="color:#7B93FF">Azul tinte</span><span class="r" style="color:#9DA5B5">7:1 · texto pequeño ✓</span></div>
+        <div class="ct" style="background:#070A10"><span class="s" style="color:#4162FF">Azul liga</span><span class="r" style="color:#9DA5B5">4,2:1 · solo títulos ≥ 24 px</span></div>
+        <div class="ct" style="background:#FFDE41"><span class="s" style="color:#070A10">Noche</span><span class="r" style="color:#3B3410">15:1 · botón principal ✓</span></div>
+      </div>
+    </div>
+
+    <div class="g-block">
+      <h3><small>02</small>Tipografía</h3>
+      <p class="g-note">Archivo para títulos: tiene un eje de ancho, así que en versión expandida y negra recuerda a los números de camiseta y a la marca del kick-off (Arial negrita). Inter sigue siendo la letra de texto, como dice el SRS. JetBrains Mono para fechas, etiquetas y cifras, que es el guiño “de datos”.</p>
+      <div class="type-spec">
+        <div class="ts"><div class="meta"><b>Display · Archivo</b>Black 900 · ancho 118%<br>MAYÚSCULAS · −2% tracking</div><div style="font-family:var(--f-display);font-weight:900;font-stretch:118%;font-size:clamp(40px,7vw,72px);line-height:.95;text-transform:uppercase">Data <span style="color:var(--blue)">League</span></div></div>
+        <div class="ts"><div class="meta"><b>Título de sección</b>Archivo 850 · ancho 112%<br>36–52 px</div><div style="font-family:var(--f-display);font-weight:850;font-stretch:112%;font-size:clamp(26px,4vw,40px);line-height:1;text-transform:uppercase">Fechas <span style="color:var(--yellow)">importantes</span></div></div>
+        <div class="ts"><div class="meta"><b>Texto · Inter</b>400 / 600 · 16–18 px<br>interlineado 1,55 · máx. 65 car.</div><p style="max-width:60ch;color:var(--muted)">Cada track parte de un tema que ya te interesa. <strong style="color:var(--text)">No necesitas haber ido a una hackathon antes.</strong></p></div>
+        <div class="ts"><div class="meta"><b>Datos · JetBrains Mono</b>500 / 700 · 11–13 px<br>MAYÚSCULAS · +12% tracking</div><div style="font-family:var(--f-mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)"><span style="color:var(--yellow)">Jornada 3</span> · 01 DIC · Virtual · −12.02° S</div></div>
+      </div>
+    </div>
+
+    <div class="g-block">
+      <h3><small>03</small>Motivos gráficos</h3>
+      <p class="g-note">Usa cada uno en una sola sección para que la página tenga variedad. Si todo lleva el mismo recurso, vuelve a verse monótona.</p>
+      <div class="motifs">
+        <div class="motif"><div class="demo"><canvas id="mini-net" style="width:100%;height:100%"></canvas></div><div class="txt"><b>Red de nodos del Perú</b><span>Solo en el hero y en la imagen para redes. Nodos en azul, amarillo y blanco, con movimiento lento.</span></div></div>
+        <div class="motif"><div class="demo" style="background:var(--bg)"><div style="background:var(--yellow);color:var(--bg);font-family:var(--f-display);font-weight:850;font-stretch:112%;text-transform:uppercase;font-size:13px;padding:10px 18px;transform:rotate(-3deg);width:120%;text-align:center;white-space:nowrap">29 nov ◆ 5 dic · UNI ◆ 2 a 4</div></div><div class="txt"><b>Cinta amarilla</b><span>Viene de la franja de fecha del kick-off. Lleva datos clave, ligeramente inclinada. Una por página.</span></div></div>
+        <div class="motif"><div class="demo"><span style="font-family:var(--f-display);font-weight:900;font-stretch:125%;font-size:96px;color:transparent;-webkit-text-stroke:2px var(--blue-soft);line-height:1">03</span></div><div class="txt"><b>Numerales de camiseta</b><span>Contorno azul, se rellenan en amarillo al pasar el mouse. Solo cuando el número es real (tracks, fechas).</span></div></div>
+        <div class="motif"><div class="demo"><div class="scoreboard" style="transform:scale(.8)"><div class="cell"><span class="num">21</span><span class="lbl">Días</span></div><div class="cell"><span class="num">19</span><span class="lbl">Horas</span></div></div></div><div class="txt"><b>Marcador LED</b><span>Para la cuenta regresiva y contadores en vivo. Mono, amarillo, con brillo suave.</span></div></div>
+        <div class="motif"><div class="demo" style="padding:20px"><div style="width:100%;height:90px;display:flex;align-items:flex-end;gap:3px" id="mini-bars"></div></div><div class="txt"><b>Micrográficos</b><span>Barras, líneas y redes como íconos de track y como “código de barras” del ticket. Reemplazan a los emojis.</span></div></div>
+        <div class="motif"><div class="demo"><div style="background:var(--yellow);color:var(--bg);padding:14px 22px;border-radius:6px;font-family:var(--f-display);font-weight:900;font-stretch:118%;font-size:24px;text-transform:uppercase;border-right:2px dashed var(--bg)">05 · DIC</div></div><div class="txt"><b>Entrada a la final</b><span>La final es el único evento presencial, así que tiene su propio formato. También sirve para el QR de check-in.</span></div></div>
+      </div>
+    </div>
+
+    <div class="g-block">
+      <h3><small>04</small>Ritmo de secciones</h3>
+      <p class="g-note">Esta es la regla principal contra la monotonía. Alterna el fondo oscuro con bandas de color pleno, sin poner dos bandas seguidas.</p>
+      <div class="rhythm">
+        <div style="background:#070A10;color:#9DA5B5">Hero</div>
+        <div style="background:#070A10;color:#9DA5B5">La liga</div>
+        <div style="background:#4162FF;color:#fff">Tracks</div>
+        <div style="background:#070A10;color:#9DA5B5">Reglas + fixture</div>
+        <div style="background:#FFDE41;color:#070A10">Impacto</div>
+        <div style="background:#070A10;color:#9DA5B5">Premios · aliados</div>
+        <div style="background:#070A10;color:#9DA5B5">FAQ · CTA</div>
+      </div>
+    </div>
+
+    <div class="g-block">
+      <h3><small>05</small>Componentes</h3>
+      <div class="comp-grid">
+        <div class="comp">
+          <span class="lbl">Botones</span>
+          <div class="row"><a class="btn btn-primary" href="#guia">Postula <span class="arr">→</span></a><a class="btn btn-secondary" href="#guia">Ver tracks</a></div>
+          <p class="g-note" style="font-size:14px">El principal es amarillo con sombra azul desplazada, y “se hunde” al hacer clic. Solo hay uno por pantalla.</p>
+        </div>
+        <div class="comp">
+          <span class="lbl">Etiquetas de modalidad</span>
+          <div class="row"><span class="pill virtual">Virtual</span><span class="pill presencial">Presencial · UNI</span><span class="pill soon">Próximamente</span><span class="pill">Online</span></div>
+        </div>
+        <div class="comp">
+          <span class="lbl">Estados de postulación (panel)</span>
+          <div class="row"><span class="status s-reg">Registrada</span><span class="status s-obs">Observada</span><span class="status s-val">Válida</span><span class="status s-fin">Finalista</span><span class="status s-no">No seleccionada</span><span class="status s-ret">Retirada</span></div>
+          <p class="g-note" style="font-size:14px">El naranja y el rojo son colores de estado, no de marca. Solo se usan en el panel.</p>
+        </div>
+        <div class="comp">
+          <span class="lbl">Formulario por pasos</span>
+          <div class="steps" aria-label="Paso 2 de 4"><i class="on"></i><i class="cur"></i><i></i><i></i></div>
+          <div class="field"><label for="f-team">Nombre del equipo</label><input id="f-team" value="Los Outliers"><span class="hint">Así aparecerá en la lista de finalistas.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="g-block">
+      <h3><small>06</small>Sí y no</h3>
+      <div class="do-dont">
+        <div class="dd do"><h4>Sí</h4><ul>
+          <li>Usar el amarillo para lo que se hace (postular) o lo que pasa una vez (la final).</li>
+          <li>Mostrar números grandes cuando el dato importa: fechas, cupos, metas.</li>
+          <li>Logos de aliados en blanco y a la misma altura.</li>
+          <li>Hablar de tú y con frases cortas.</li>
+        </ul></div>
+        <div class="dd dont"><h4>No</h4><ul>
+          <li>Degradados azul a morado, o colores fuera de la paleta.</li>
+          <li>Emojis como íconos de sección (el kick-off los usa, la web no).</li>
+          <li>Dos bandas de color seguidas, o más de un botón amarillo por pantalla.</li>
+          <li>Azul liga para textos pequeños (usa el tinte #7B93FF).</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="g-block" id="tokens">
+      <h3><small>07</small>Tokens para Tailwind</h3>
+      <p class="g-note">Para pegar en <code style="font-family:var(--f-mono);font-size:13px">tailwind.config.ts</code> del proyecto (React + Vite + Tailwind, según el SRS).</p>
+      <div class="codebox">
+        <button class="copy" data-copy="tw-code" type="button">Copiar</button>
+<pre class="nowrap" id="tw-code">// tailwind.config.ts
+export default {
+  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        night:   { DEFAULT: "#070A10", 2: "#0B1120", line: "#1A2440" },
+        slate:   { DEFAULT: "#2D3A59" },
+        league:  { DEFAULT: "#4162FF", soft: "#7B93FF", ink: "#0E1A5C" },
+        signal:  { DEFAULT: "#FFDE41" },
+        ink:     { DEFAULT: "#F4F7FC", muted: "#9DA5B5" },
+      },
+      fontFamily: {
+        display: ['"Archivo"', '"Arial Black"', "Arial", "sans-serif"],
+        sans:    ['"Inter"', "Arial", "Helvetica", "sans-serif"],
+        mono:    ['"JetBrains Mono"', "ui-monospace", "monospace"],
+      },
+      borderRadius: { DEFAULT: "6px" },
+      boxShadow: { cta: "4px 4px 0 #4162FF", "cta-hover": "6px 6px 0 #4162FF" },
+      keyframes: { marquee: { to: { transform: "translateX(-50%)" } } },
+      animation: { marquee: "marquee 38s linear infinite" },
+    },
+  },
+};
+
+/* index.html: Google Fonts
+https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap
+Títulos: class="font-display font-black uppercase [font-stretch:118%]" */</pre>
+      </div>
+    </div>
+
+    <div class="g-block" id="prompt" style="padding-bottom:80px">
+      <h3><small>08</small>Prompt para Claude Design</h3>
+      <p class="g-note">Si quieres explorar variantes en Claude Design, pega este prompt y adjunta el PDF del kick-off. Ya incluye los colores, las reglas y el contenido real de la landing.</p>
+      <div class="codebox">
+        <button class="copy" data-copy="cd-prompt" type="button">Copiar prompt</button>
+<pre id="cd-prompt">Diseña la landing page de "Data League", la liga interuniversitaria de ciencia de datos del Perú (edición 2026, sede UNI, Lima). Adjunto el PDF del kick-off: respeta su identidad.
+
+OBJETIVO: que la página no se vea monótona. Cada sección debe tener su propio recurso visual, sin salirse de la marca.
+
+CONCEPTO: "una liga deportiva contada con datos". Mezcla el lenguaje de una liga (marcador, fixture, numerales de camiseta, entrada a la final, podio) con micrográficos de datos (barras, líneas, redes de nodos).
+
+COLORES (exactos, no agregues otros):
+- Fondo #070A10 · superficie elevada #0B1120 · bordes #2D3A59 / líneas #1A2440
+- Azul liga #4162FF (palabra "LEAGUE", tracks, gráficos; texto pequeño en azul: #7B93FF)
+- Amarillo #FFDE41 (botón principal, fechas, la final)
+- Texto #F4F7FC · secundario #9DA5B5
+- Tema oscuro únicamente. Sin degradados azul-morado.
+
+TIPOGRAFÍA: Archivo Black expandida (ancho ~118%) en mayúsculas para títulos; Inter para texto; JetBrains Mono para fechas, etiquetas y cifras.
+
+RITMO: alterna secciones oscuras con bandas de color pleno, nunca dos bandas seguidas: Hero (oscuro) → La liga (oscuro) → Tracks (banda azul con trama de puntos) → Requisitos + cronograma (oscuro) → Impacto (banda amarilla, texto negro) → Premios/jurado + aliados (oscuro) → FAQ + CTA (oscuro).
+
+SECCIONES Y CONTENIDO:
+1. Hero: "DATA LEAGUE" (LEAGUE en azul), lema "Aprende. Demuestra. Conecta.", cuenta regresiva estilo marcador LED amarillo hasta el 29/11/2026 23:59 (hora Perú), botón amarillo "Postula" con sombra azul desplazada. De fondo, la red de nodos con forma del mapa del Perú del kick-off (nodos azules, amarillos y blancos), con un nodo destacado en Lima. Debajo, una cinta amarilla inclinada con texto en movimiento: "Postulaciones hasta el 29 nov · Final presencial 5 dic · UNI · Equipos de 2 a 4 · 5 tracks".
+2. La liga: "La Ivy League de los datos". La Ivy League nació como liga deportiva entre universidades; Data League busca lo mismo con los datos y rotará de sede: UNI (2026, actual), La Agraria y San Marcos (próximas).
+3. Tracks (5), con numeral grande en contorno y un micrográfico propio: 01 Estado, Economía y Sociedad · 02 Salud, Vida y Bienestar · 03 Ciudades, Producción y Ambiente · 04 Deporte, Cultura y Entretenimiento · 05 Educación, Ciencia y Tecnología.
+4. Requisitos ("reglas del juego"): estudiante activo de pregrado universitario o de instituto · 18 años o más · equipos de 2 a 4 (también se puede postular solo y la organización asigna equipo).
+5. Cronograma tipo fixture, cada fila con etiqueta Virtual/Presencial: 27 nov Kick off y storytelling con datos (virtual) · 29 nov cierre de postulaciones · 30 nov Machine learning (virtual) · 01 dic IA con aplicaciones y MVP (virtual) · 02 dic Gobierno de datos (virtual) · 05 dic Gran final (presencial, UNI). La final se muestra además como una entrada/ticket amarillo troquelado: "05 · DIC · UNI", cupo ~120, "Admite 1 equipo".
+6. Impacto (banda amarilla): 300+ jóvenes · 120 en la final · 20+ comunidades.
+7. Premios y jurado: ambos "Próximamente", sin montos (podio vacío y siluetas).
+8. Aliados: institucionales (DMC Institute, Data Science, FIEECS UNI) y community partners (Unicode y otras), logos en blanco a la misma altura.
+9. FAQ en acordeón y footer con redes, contacto, Bases y Privacidad.
+
+ESTILO: radio 6 px, bordes finos, poco uso de tarjetas con sombra. Un solo botón amarillo por pantalla. Sin emojis como íconos. Responsive (móvil primero, 375 px) y accesible (contraste AA, foco visible, respetar reduce-motion).
+
+Entrega: desktop (1440) y móvil (375).</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ---- cuenta regresiva ---- */
+  var end = Date.parse("2026-11-29T23:59:00-05:00");
+  function pad(n){return String(n).padStart(2,"0")}
+  function tick(){
+    var ms = Math.max(0,end-Date.now()), s=Math.floor(ms/1000);
+    var d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60), sc=s%60;
+    var el=function(id,v){var e=document.getElementById(id); if(e) e.textContent=pad(v)};
+    el("cd-d",d);el("cd-h",h);el("cd-m",m);el("cd-s",sc);
+  }
+  tick(); setInterval(tick,1000);
+
+  /* ---- barras pseudoaleatorias (ticket y micrográfico) ---- */
+  var seed=7; function rnd(){seed=(seed*16807)%2147483647;return (seed-1)/2147483646}
+  function bars(id,n,yellowEvery){
+    var c=document.getElementById(id); if(!c) return;
+    for(var i=0;i<n;i++){var b=document.createElement("i");b.style.height=(25+rnd()*75)+"%";
+      if(yellowEvery){b.style.flex="1";b.style.display="block";b.style.borderRadius="2px 2px 0 0";b.style.background=(i%yellowEvery===yellowEvery-1)?"#FFDE41":"#4162FF"}
+      c.appendChild(b)}
+  }
+  bars("bars",26); bars("mini-bars",18,6);
+
+  /* ---- red de nodos con forma del Perú ---- */
+  var PERU=[[.10,.22],[.22,.12],[.30,.10],[.38,.02],[.48,0],[.56,.07],[.66,.10],[.80,.17],[.72,.29],[.79,.40],[.93,.45],[.92,.58],[1,.70],[.95,.80],[.98,.92],[.92,1],[.80,.96],[.62,.86],[.46,.73],[.36,.59],[.26,.46],[.16,.38],[.05,.30]];
+  function inside(x,y){var c=false;for(var i=0,j=PERU.length-1;i<PERU.length;j=i++){var a=PERU[i],b=PERU[j];if(((a[1]>y)!=(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]))c=!c}return c}
+  function buildNet(count){
+    seed=42; var pts=PERU.map(function(p){return {x:p[0],y:p[1],c:rnd()<.25?"y":(rnd()<.5?"w":"b")}});
+    var tries=0; while(pts.length<count && tries<5000){tries++;var x=rnd(),y=rnd(); if(inside(x,y)){
+      var ok=pts.every(function(p){return Math.hypot(p.x-x,p.y-y)>.07}); if(ok) pts.push({x:x,y:y,c:rnd()<.22?"y":(rnd()<.45?"w":"b")})}}
+    var edges=[]; pts.forEach(function(p,i){var d=pts.map(function(q,j){return {j:j,d:Math.hypot(p.x-q.x,p.y-q.y)}}).filter(function(o){return o.j!==i}).sort(function(a,b){return a.d-b.d});
+      for(var k=0;k<3;k++){var j=d[k].j; if(j>i||!edges.some(function(e){return e[0]===j&&e[1]===i})) edges.push([i,j])}});
+    var lima=pts.reduce(function(best,p,i){var dd=Math.hypot(p.x-.40,p.y-.62);return dd<best.d?{i:i,d:dd}:best},{i:0,d:9}).i;
+    pts[lima].c="y"; pts[lima].lima=true;
+    return {pts:pts,edges:edges,lima:lima};
+  }
+  var COL={b:"#4162FF",y:"#FFDE41",w:"#F4F7FC"};
+  var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function draw(canvasId,count,big){
+    var cv=document.getElementById(canvasId); if(!cv) return; var ctx=cv.getContext("2d"); var net=buildNet(count);
+    var pulses=[]; for(var i=0;i<(big?14:6);i++) pulses.push({e:Math.floor(Math.random()*net.edges.length),t:Math.random()});
+    function size(){var r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;cv.width=Math.max(1,r.width*dpr);cv.height=Math.max(1,r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);return r}
+    var R=size(); window.addEventListener("resize",function(){R=size(); if(reduce) frame(0)});
+    function P(p){var pad=big?12:16,w=R.width-pad*2,h=R.height-pad*2;var s=Math.min(w/.95,h);var ox=(R.width-s*.95)/2,oy=(R.height-s)/2;return [ox+p.x*s*.95,oy+p.y*s]}
+    function frame(time){
+      ctx.clearRect(0,0,R.width,R.height);
+      ctx.lineWidth=big?1:.8; ctx.strokeStyle="rgba(123,147,255,.38)";
+      net.edges.forEach(function(e){var a=P(net.pts[e[0]]),b=P(net.pts[e[1]]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()});
+      if(!reduce){pulses.forEach(function(p){p.t+=.006; if(p.t>1){p.t=0;p.e=Math.floor(Math.random()*net.edges.length)}
+        var e=net.edges[p.e],a=P(net.pts[e[0]]),b=P(net.pts[e[1]]);var x=a[0]+(b[0]-a[0])*p.t,y=a[1]+(b[1]-a[1])*p.t;
+        ctx.fillStyle="#FFDE41";ctx.beginPath();ctx.arc(x,y,big?2.2:1.6,0,7);ctx.fill()})}
+      net.pts.forEach(function(p,i){var q=P(p);var r=(big?3.2:2.2)*(p.c==="y"?1.25:1);
+        ctx.fillStyle=COL[p.c];ctx.beginPath();ctx.arc(q[0],q[1],r,0,7);ctx.fill();
+        if(p.lima){var k=reduce?.5:(time/1600)%1;ctx.strokeStyle="rgba(255,222,65,"+(1-k)+")";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(q[0],q[1],r+4+k*(big?18:10),0,7);ctx.stroke()}});
+      if(!reduce) requestAnimationFrame(frame);
+    }
+    frame(0);
+  }
+  draw("peru",62,true); draw("mini-net",34,false);
+
+  /* ---- copiar ---- */
+  document.querySelectorAll("[data-copy]").forEach(function(btn){btn.addEventListener("click",function(){
+    var el=document.getElementById(btn.getAttribute("data-copy")); var txt=el.textContent; var label=btn.textContent;
+    function done(){btn.textContent="Copiado ✓";setTimeout(function(){btn.textContent=label},1600)}
+    function fallback(){var r=document.createRange();r.selectNodeContents(el);var s=window.getSelection();s.removeAllRanges();s.addRange(r);btn.textContent="Seleccionado: Ctrl/Cmd+C";setTimeout(function(){btn.textContent=label},2200)}
+    try{navigator.clipboard.writeText(txt).then(done,fallback)}catch(e){fallback()}
+  })});
+})();
+</script>

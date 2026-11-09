@@ -1,0 +1,165 @@
+rules_version = '2';
+
+// Data League 2026. Ver SRS.md, secciones 3, 5 y 6.2.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    // Administración: solo la cuenta de correo/contraseña creada a mano en Firebase Authentication.
+    // Una cuenta de Google con ese correo no sirve: se exige el proveedor «password».
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email == 'admin@dataleague.test';
+    }
+
+    // Cierre: 29/11/2026 23:59:59 hora de Perú (UTC-5) = 30/11/2026 04:59:59 UTC.
+    function beforeDeadline() { return request.time < timestamp.date(2026, 11, 30) + duration.value(5, 'h'); }
+    function applicationsOpen() {
+      let cfg = /databases/$(database)/documents/config/2026-uni;
+      return !exists(cfg) || get(cfg).data.get('postulacionAbierta', true) == true;
+    }
+    function emailRe(v) { return v is string && v.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') && v.size() <= 120; }
+    function phoneRe(v) { return v is string && v.matches('^\\+[1-9][0-9]{7,14}$'); }
+    function text(v, max) { return v is string && v.trim().size() > 0 && v.size() <= max; }
+
+    function validMember(m) {
+      return m is map
+        && m.keys().hasOnly(['nombres', 'apellidos', 'correo', 'whatsapp'])
+        && text(m.nombres, 80) && text(m.apellidos, 80)
+        && emailRe(m.correo) && m.correo == m.correo.lower()
+        && phoneRe(m.whatsapp);
+    }
+
+    function validDoc(d) {
+      return (d.tipoDocumento == 'DNI' && d.numeroDocumento.matches('^[0-9]{8}$'))
+        || (d.tipoDocumento == 'CE' && d.numeroDocumento.matches('^[A-Za-z0-9]{9,12}$'))
+        || (d.tipoDocumento == 'PASAPORTE' && d.numeroDocumento.matches('^[A-Za-z0-9]{6,12}$'));
+    }
+
+    // Nadie repite correo: ni los integrantes entre sí ni con el líder (RN-06).
+    function distinctEmails(d) {
+      let m = d.integrantes;
+      let n = m.size();
+      return (n < 1 || m[0].correo != d.correo)
+        && (n < 2 || (m[1].correo != d.correo && m[1].correo != m[0].correo))
+        && (n < 3 || (m[2].correo != d.correo && m[2].correo != m[0].correo && m[2].correo != m[1].correo));
+    }
+
+    function validPostulacion(d) {
+      return d.keys().hasOnly([
+          'edicion', 'uid', 'modo', 'track', 'estado', 'nombres', 'apellidos', 'tipoDocumento', 'numeroDocumento',
+          'correo', 'whatsapp', 'fechaNacimiento', 'tipoInstitucion', 'institucion', 'carrera', 'ciclo', 'nivelDatos',
+          'areasInteres', 'comoSeEntero', 'nombreEquipo', 'integrantes', 'pideEquipo',
+          'declaracionRequisitos', 'consentimientoDatos', 'aceptaBases', 'versionTextosLegales', 'creadoEn', 'actualizadoEn'
+        ])
+        && d.edicion == '2026-uni'
+        && d.uid == request.auth.uid
+        && d.modo in ['equipo', 'individual']
+        && d.track in ['01', '02', '03', '04', '05']
+        && text(d.nombres, 80) && text(d.apellidos, 80)
+        && d.tipoDocumento in ['DNI', 'CE', 'PASAPORTE'] && d.numeroDocumento is string && validDoc(d)
+        && emailRe(d.correo) && d.correo == request.auth.token.email.lower()
+        && phoneRe(d.whatsapp)
+        && d.fechaNacimiento is timestamp && d.fechaNacimiento <= request.time - duration.value(6574, 'd') // 18 años (4 o 5 años bisiestos)
+        && d.tipoInstitucion in ['universidad', 'instituto'] && text(d.institucion, 120) && text(d.carrera, 120)
+        && d.ciclo is int && d.ciclo >= 1 && d.ciclo <= 12
+        && d.nivelDatos in ['ninguno', 'basico', 'intermedio', 'avanzado']
+        && d.areasInteres is list && d.areasInteres.size() >= 1 && d.areasInteres.size() <= 8
+        && text(d.comoSeEntero, 60)
+        && d.declaracionRequisitos == true && d.consentimientoDatos == true && d.aceptaBases == true
+        && text(d.versionTextosLegales, 20)
+        && (
+          (d.modo == 'equipo'
+            && text(d.nombreEquipo, 60)
+            && d.integrantes is list && d.integrantes.size() >= 1 && d.integrantes.size() <= 3   // equipo de 2 a 4 con el líder
+            && distinctEmails(d)
+            && !('pideEquipo' in d))
+          ||
+          (d.modo == 'individual'
+            && d.pideEquipo is bool
+            && !('integrantes' in d) && !('nombreEquipo' in d))
+        );
+    }
+
+    // ---------- Postulaciones: el id es el uid de quien postula (una por cuenta) ----------
+    match /postulaciones/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+
+      allow create: if signedIn() && request.auth.uid == uid
+        && beforeDeadline() && applicationsOpen()
+        && validPostulacion(request.resource.data)
+        && request.resource.data.estado == 'registrada'
+        && request.resource.data.creadoEn == request.time
+        && request.resource.data.actualizadoEn == request.time
+        && (request.resource.data.modo == 'individual'
+            || request.resource.data.integrantes.size() == 0
+            || validMember(request.resource.data.integrantes[0]))
+        && (request.resource.data.modo == 'individual'
+            || request.resource.data.integrantes.size() < 2
+            || validMember(request.resource.data.integrantes[1]))
+        && (request.resource.data.modo == 'individual'
+            || request.resource.data.integrantes.size() < 3
+            || validMember(request.resource.data.integrantes[2]));
+
+      // El postulante solo puede retirar su postulación (la edición completa llega en la fase 3).
+      allow update: if signedIn() && request.auth.uid == uid && beforeDeadline()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn'])
+        && request.resource.data.estado == 'retirada'
+        && request.resource.data.actualizadoEn == request.time;
+
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- Índice de unicidad de correos (RN-06) ----------
+    // Se crea en la misma transacción que la postulación y solo para correos que ella contiene.
+    match /correosEdicion/{id} {
+      allow get: if signedIn();      // el cliente comprueba si el correo ya está inscrito
+      allow list: if isAdmin();
+      allow create: if signedIn() && beforeDeadline() && applicationsOpen()
+        && request.resource.data.keys().hasOnly(['uid', 'rol'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.rol in ['lider', 'individual', 'integrante']
+        && id.matches('^2026-uni_.+$')
+        && (
+          id == '2026-uni_' + getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.correo
+          || (getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.get('integrantes', []).size() > 0
+              && id == '2026-uni_' + getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.integrantes[0].correo)
+          || (getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.get('integrantes', []).size() > 1
+              && id == '2026-uni_' + getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.integrantes[1].correo)
+          || (getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.get('integrantes', []).size() > 2
+              && id == '2026-uni_' + getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.integrantes[2].correo)
+        );
+      allow update, delete: if isAdmin();
+    }
+
+    match /config/{edicion} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---------- Sponsors: cualquiera puede enviar una solicitud; solo los admins la leen y la gestionan ----------
+    function validSponsor(d) {
+      return d.keys().hasOnly(['edicion', 'organizacion', 'contacto', 'cargo', 'correo', 'telefono', 'tipoApoyo', 'mensaje', 'consentimientoDatos', 'estado', 'creadoEn'])
+        && d.edicion == '2026-uni' && d.estado == 'nuevo'
+        && text(d.organizacion, 120) && text(d.contacto, 100) && text(d.cargo, 80)
+        && emailRe(d.correo)
+        && d.telefono is string && d.telefono.size() <= 20
+        && d.tipoApoyo is list && d.tipoApoyo.size() >= 1 && d.tipoApoyo.size() <= 5
+        && d.tipoApoyo.hasOnly(['economico', 'premios', 'difusion', 'mentoria', 'otro'])
+        && d.mensaje is string && d.mensaje.size() <= 1000
+        && d.consentimientoDatos == true
+        && d.creadoEn == request.time;
+    }
+    match /sponsors/{id} {
+      allow create: if validSponsor(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /notasAdmin/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
