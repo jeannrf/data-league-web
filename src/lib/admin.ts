@@ -1,11 +1,9 @@
 import type { Timestamp } from "firebase/firestore";
 
-export type Miembro = { nombres: string; apellidos: string; correo: string; whatsapp: string };
+export type Miembro = { nombre: string; correo: string; whatsapp: string };
 export type Post = {
-  id: string; edicion: string; uid: string; modo: "equipo" | "individual"; track: string; estado: string;
-  nombres: string; apellidos: string; tipoDocumento: string; numeroDocumento: string; correo: string; whatsapp: string;
-  fechaNacimiento?: Timestamp; tipoInstitucion: string; institucion: string; carrera: string; ciclo: number; nivelDatos: string;
-  areasInteres: string[]; comoSeEntero: string; nombreEquipo?: string; integrantes?: Miembro[]; pideEquipo?: boolean;
+  id: string; edicion: string; uid: string; modo: "equipo" | "individual"; estado: string;
+  nombre: string; correo: string; whatsapp: string; integrantes?: Miembro[];
   creadoEn?: Timestamp; actualizadoEn?: Timestamp;
   correoEstado?: string; correoEnviadoEn?: Timestamp;
 };
@@ -37,14 +35,14 @@ export function descargarCsv(nombre: string, filas: (string | number)[][]) {
   URL.revokeObjectURL(url);
 }
 
-/** Una fila por persona: líder o individual y cada integrante. */
+/** Una fila por persona: quien lidera (o postula solo) y cada integrante. */
 export function filasPersonas(posts: Post[]): (string | number)[][] {
-  const cab = ["Rol", "Nombres", "Apellidos", "Correo", "WhatsApp", "Documento", "Institución", "Carrera", "Ciclo", "Track", "Equipo", "Modo", "Estado", "Fecha de registro"];
-  const out: (string | number)[][] = [cab];
+  const out: (string | number)[][] = [["Rol", "Nombre", "Correo", "WhatsApp", "Modo", "Equipo de", "Estado", "Fecha de registro"]];
   for (const p of posts) {
-    const base = [p.institucion, p.carrera, p.ciclo, p.track, p.nombreEquipo ?? "", p.modo, estadoTexto(p.estado), p.creadoEn ? p.creadoEn.toDate().toISOString() : ""];
-    out.push([p.modo === "equipo" ? "Líder" : "Individual", p.nombres, p.apellidos, p.correo, p.whatsapp, `${p.tipoDocumento} ${p.numeroDocumento}`, ...base]);
-    (p.integrantes ?? []).forEach((m) => out.push(["Integrante", m.nombres, m.apellidos, m.correo, m.whatsapp, "", "", "", "", p.track, p.nombreEquipo ?? "", p.modo, estadoTexto(p.estado), ""]));
+    const n = 1 + (p.integrantes?.length ?? 0);
+    const fecha = p.creadoEn ? p.creadoEn.toDate().toISOString() : "";
+    out.push([p.modo === "equipo" ? "Líder" : "Individual", p.nombre, p.correo, p.whatsapp, p.modo, n, estadoTexto(p.estado), fecha]);
+    (p.integrantes ?? []).forEach((m) => out.push(["Integrante", m.nombre, m.correo, m.whatsapp, p.modo, n, estadoTexto(p.estado), ""]));
   }
   return out;
 }

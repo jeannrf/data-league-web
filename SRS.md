@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Proyecto** | Plataforma web de Data League (landing, postulaciones y panel de administración) |
-| **Versión** | 1.5 (borrador) |
+| **Versión** | 1.7 (borrador) |
 | **Fecha** | 8 de noviembre de 2026 |
 | **Autor** | Jeanpier |
 | **Estado** | En revisión. Los puntos marcados como **[TBD]** están pendientes de definir (ver sección 10). |
@@ -200,51 +200,20 @@ Firebase Hosting ── SPA React (landing + área del líder + panel admin)
 
 ### 4.3 Postulación (POS)
 
+La postulación es lo más simple posible: de cada persona solo se piden **nombre completo, celular y correo**.
+
 | ID | Requisito | Prioridad | Fase |
 |---|---|---|---|
-| RF-POS-01 | Al iniciar la postulación, pedir que elija entre **"Postular en equipo"** y **"Postular individualmente"**. | M | 2 |
-| RF-POS-02 | Pedir los datos de quien postula (ver tabla 4.3.1). | M | 2 |
-| RF-POS-03 | En modo equipo, pedir el nombre del equipo y el track. | M | 2 |
-| RF-POS-04 | En modo equipo, permitir agregar de 1 a 3 integrantes, cada uno con **nombres, correo y WhatsApp**, y quitar integrantes antes de enviar. | M | 2 |
-| RF-POS-05 | En modo individual, pedir el track y si quiere que la organización le asigne un equipo (sí o no). | M | 2 |
-| RF-POS-06 | Pedir la declaración del líder (RN-05), el consentimiento de tratamiento de datos y la aceptación de las bases. Son obligatorios. | M | 2 |
-| RF-POS-07 | Validar los campos en el navegador y en las reglas de Firestore (formatos, edad, tamaño del equipo, fecha límite). | M | 2 |
-| RF-POS-08 | Rechazar la postulación si algún correo ya está registrado en otro equipo de la edición (RN-06), indicando cuál. | M | 2 |
-| RF-POS-09 | Mostrar un resumen antes de enviar y una pantalla de confirmación después. | M | 2 |
-| RF-POS-10 | Guardar el borrador del formulario en el navegador para no perder datos si se recarga la página. | C | 2 |
-| RF-POS-11 | Bloquear el envío y la edición después de la fecha límite (RN-08). | M | 2 |
-| RF-POS-12 | Guardar un campo "¿Cómo te enteraste?" con opciones que incluyan a cada aliado y comunidad. | S | 2 |
+| RF-POS-01 | Mostrar un único formulario, sin pasos: "Tus datos" (nombre completo y celular; el correo es el de la cuenta de Google y no se edita) y "Tu equipo". | M | 2 |
+| RF-POS-02 | En "Tu equipo" permitir agregar de 1 a 3 integrantes, cada uno con nombre completo, celular y correo, y quitarlos antes de enviar. Sin integrantes, la postulación es individual. | M | 2 |
+| RF-POS-03 | Pedir una única casilla obligatoria, no marcada por defecto, que reúne la declaración de requisitos (estudiante activo de pregrado, mayor de 18 años, integrantes que autorizaron compartir sus datos), el tratamiento de datos y la aceptación de las bases. | M | 2 |
+| RF-POS-04 | Validar en el navegador y en las reglas de Firestore: celular (9 dígitos que empiezan con 9, o número internacional con código de país), correo válido y distinto para cada persona, equipo de 2 a 4 personas, fecha límite y casilla marcada. | M | 2 |
+| RF-POS-05 | Rechazar la postulación si algún correo ya está en otra del mismo evento (RN-06), indicando cuál. | M | 2 |
+| RF-POS-06 | Mostrar una confirmación después de enviar. | M | 2 |
+| RF-POS-07 | Guardar el borrador del formulario en el navegador. | C | 2 |
+| RF-POS-08 | Bloquear el envío después de la fecha límite (RN-08). | M | 2 |
 
-#### 4.3.1 Campos del formulario
-
-**Quien postula (líder o individual):**
-
-| Campo | Tipo | Validación |
-|---|---|---|
-| Nombres | texto | obligatorio |
-| Apellidos | texto | obligatorio |
-| Tipo de documento | DNI / Carné de extranjería / Pasaporte | obligatorio |
-| Número de documento | texto | DNI: 8 dígitos; CE: 9–12 caracteres; pasaporte: 6–12 caracteres |
-| Correo | email | el de la cuenta, no editable |
-| WhatsApp | teléfono | prefijo de país (por defecto +51); en Perú, 9 dígitos que empiezan con 9 |
-| Fecha de nacimiento | fecha | 18 años o más a la fecha de envío |
-| Tipo de institución | Universidad / Instituto | obligatorio |
-| Institución | lista con búsqueda + "Otra" | obligatorio |
-| Carrera | texto | obligatorio |
-| Ciclo | 1–12 | obligatorio |
-| Nivel en datos | Ninguno / Básico / Intermedio / Avanzado | obligatorio |
-| Áreas de interés | selección múltiple (salud, deporte, educación, economía, ambiente, cultura, tecnología, otra) | al menos una |
-| ¿Cómo te enteraste? | lista | obligatorio |
-| Declaración, consentimiento y bases | casillas | obligatorias |
-
-**Por cada integrante:**
-
-| Campo | Validación |
-|---|---|
-| Nombres | obligatorio |
-| Apellidos | obligatorio |
-| Correo | formato válido, distinto al de los demás integrantes y al del líder |
-| WhatsApp | mismo formato que el del líder |
+**Retirados de la v1.6** (se pueden volver a pedir más adelante, por ejemplo en la ficha del admin): documento de identidad, fecha de nacimiento, institución, carrera, ciclo, nivel en datos, áreas de interés, "¿cómo te enteraste?", nombre del equipo, track y "pide equipo". La mayoría de edad y la condición de estudiante ya no se validan en el servidor: se aceptan por declaración (RN-05).
 
 ### 4.4 Área del postulante (PAR)
 
@@ -316,6 +285,17 @@ Firebase Hosting ── SPA React (landing + área del líder + panel admin)
 | RF-SPO-03 | Validar la solicitud en el navegador y en las reglas de Firestore, y reducir el spam con un campo trampa (y App Check cuando esté activo). | S | 3 |
 | RF-SPO-04 | Listar las solicitudes en el panel de administración, cambiar su estado (nuevo, contactado, confirmado, descartado) y exportarlas a CSV. Solo los admins pueden leerlas. | S | 3 |
 
+### 4.10 Cuenta e inscripción a jornadas (EVT)
+
+| ID | Requisito | Prioridad | Fase |
+|---|---|---|---|
+| RF-EVT-01 | Mostrar «Iniciar sesión» en la barra de navegación; con sesión iniciada pasa a «Mi cuenta». El acceso es con Google. | S | 3 |
+| RF-EVT-02 | Página `/eventos` con las jornadas virtuales (kick-off, machine learning, IA con aplicaciones y MVP, gobierno de datos), cada una con fecha, modalidad y botón «Inscribirme». | S | 3 |
+| RF-EVT-03 | Inscribirse con un clic usando la cuenta de Google (se guardan nombre y correo) y poder cancelar la inscripción. Es independiente de la postulación a la liga. | S | 3 |
+| RF-EVT-04 | A quien está inscrito, mostrarle el enlace de la transmisión cuando exista y ofrecer añadir la jornada a su calendario (archivo .ics). La hora y el enlace están por confirmar ([TBD-06]). | S | 3 |
+| RF-EVT-05 | Página `/cuenta` con el estado de la postulación y las jornadas a las que la persona se inscribió. | S | 3 |
+| RF-EVT-06 | En el panel de administración, pestaña «Jornadas» con el número de inscritos por jornada, la lista, exportación a CSV y copia de correos. | S | 3 |
+
 ---
 
 ## 5. Requisitos de datos
@@ -324,51 +304,25 @@ Firebase Hosting ── SPA React (landing + área del líder + panel admin)
 
 Todas las colecciones llevan el campo `edicion` (por ejemplo `"2026-uni"`) para soportar varias ediciones (la sede rotará a la UNALM, la UNMSM y otras).
 
-**`postulaciones/{id}`**: una por líder o postulante individual.
+**`postulaciones/{uid}`**: una por quien lidera o postula solo; el id es el uid de Firebase Auth.
 
 ```ts
 {
   edicion: string;              // "2026-uni"
-  uid: string;                  // Firebase Auth uid de quien postula
-  modo: "equipo" | "individual";
-  track: TrackId;
+  uid: string;
+  modo: "equipo" | "individual"; // equipo si hay integrantes
   estado: EstadoPostulacion;    // ver 5.2
-  // Datos de quien postula
-  nombres: string;
-  apellidos: string;
-  tipoDocumento: "DNI" | "CE" | "PASAPORTE";
-  numeroDocumento: string;
-  correo: string;
+  nombre: string;               // nombre completo
   whatsapp: string;             // E.164, ej. "+51987654321"
-  fechaNacimiento: Timestamp;
-  tipoInstitucion: "universidad" | "instituto";
-  institucion: string;
-  carrera: string;
-  ciclo: number;
-  nivelDatos: "ninguno" | "basico" | "intermedio" | "avanzado";
-  areasInteres: string[];
-  comoSeEntero: string;
-  // Equipo (solo modo "equipo")
-  nombreEquipo?: string;
-  integrantes?: Array<{
-    nombres: string;
-    apellidos: string;
-    correo: string;
-    whatsapp: string;
-    qrToken?: string;           // se genera si es finalista
-  }>;
-  // Individual
-  pideEquipo?: boolean;
-  equipoAsignadoId?: string;    // si la organización lo une a otro equipo
-  // Legal
-  declaracionRequisitos: true;
-  consentimientoDatos: true;
-  aceptaBases: true;
-  versionTextosLegales: string; // para saber qué texto aceptó
-  // Gestión
-  qrToken?: string;             // del líder o individual, si es finalista
+  correo: string;               // el de la cuenta de Google, en minúsculas
+  integrantes?: Array<{ nombre: string; correo: string; whatsapp: string }>;  // 1 a 3, solo en modo equipo
+  consentimiento: true;         // declaración, datos y bases
+  versionTextosLegales: string;
   creadoEn: Timestamp;
   actualizadoEn: Timestamp;
+  // Los agrega el panel al enviar un correo de estado:
+  correoEstado?: string;
+  correoEnviadoEn?: Timestamp;
 }
 ```
 
@@ -394,6 +348,8 @@ Todas las colecciones llevan el campo `edicion` (por ejemplo `"2026-uni"`) para 
 ```
 
 **`notasAdmin/{postulacionId}`**: notas internas de una postulación, `{ edicion, notas: string, actualizadoPor: string, actualizadoEn: Timestamp }`. Va en una colección aparte porque Firestore no puede ocultar campos sueltos de un documento: si las notas estuvieran en `postulaciones`, el postulante podría leerlas. Solo los admins pueden leer y escribir esta colección (RNF-06).
+
+**`inscripciones/{evento}_{uid}`**: inscripción de una persona a una jornada virtual. `{ evento: "kickoff"|"ml"|"ia"|"gobierno", uid, nombre, correo, creadoEn }`. Cada persona crea, lee y borra solo la suya; el admin lee todas.
 
 **`sponsors/{id}`**: solicitud de sponsor. `{ edicion, estado: "nuevo"|"contactado"|"confirmado"|"descartado", organizacion, contacto, cargo, correo, telefono, tipoApoyo: string[], mensaje, consentimientoDatos: true, creadoEn }`. Cualquiera puede crearla (con validación); solo los admins la leen y la gestionan.
 
@@ -550,6 +506,8 @@ Oscuro únicamente.
 | `/` | Landing | Público |
 | `/postular` | Elección de modo y formulario por pasos | Con sesión |
 | `/mi-postulacion` | Estado, edición, jornadas y QR | Postulante |
+| `/eventos` | Jornadas virtuales: inscripción, calendario y enlace | Público (inscribirse requiere sesión) |
+| `/cuenta` | Mi cuenta: postulación e inscripciones | Con sesión |
 | `/sponsor` | Formulario para postular como sponsor | Público |
 | `/privacidad`, `/bases` | Textos legales | Público |
 | `/admin` | Panel: postulaciones (tabla, filtros, ficha, estados, notas, exportación) y sponsors | Admin |
@@ -663,6 +621,8 @@ Abre `/admin/checkin` en el móvil, escanea el QR del asistente y el sistema mue
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 1.7 | 08/11/2026 | «Iniciar sesión» en la barra, página `/eventos` para inscribirse a las jornadas virtuales (estilo agenda), página `/cuenta` y pestaña «Jornadas» en el panel (sección 4.10). |
+| 1.6 | 08/11/2026 | Postulación mínima: solo nombre, celular y correo de cada persona, con una casilla de aceptación (sección 4.3 y modelo 5.1). Se retiran documento, edad, institución, track y demás campos. |
 | 1.5 | 08/11/2026 | Estados simplificados (Pendiente, Aprobada, En observación, Rechazada), correo al cambiar de estado (RF-COM-07) y sin filtro por track en el panel. |
 | 1.4 | 08/11/2026 | El panel `/admin` se protege solo con la contraseña de administración (RF-AUT-05); se retira la lista de admins (RF-ADM-12). |
 | 1.3 | 08/11/2026 | Se agregan las solicitudes de sponsors (sección 4.9, colección `sponsors`, ruta `/sponsor`) y la primera versión del panel `/admin`. El inicio de sesión pasa a una ventana modal. |

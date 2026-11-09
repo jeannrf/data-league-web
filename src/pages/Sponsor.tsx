@@ -38,13 +38,13 @@ export default function Sponsor() {
       <div className="wrap py-10 md:py-16">
         {done ? (
           <div className="max-w-2xl">
-            <h1 className="display h-xl">¡Gracias!</h1>
+            <h1 className="title h-xl">¡Gracias!</h1>
             <p className="mt-6 text-xl text-ink">Recibimos tu solicitud. El equipo organizador te escribirá al correo que dejaste para conversar cómo participar en Data League 2026.</p>
             <Link to="/" className="btn btn-ghost mt-10 no-underline">Volver al inicio</Link>
           </div>
         ) : (
           <>
-            <h1 className="display h-xl">Postular como sponsor</h1>
+            <h1 className="title h-xl">Postular como sponsor</h1>
             <p className="measure mt-6 text-xl text-ink">Cuéntanos quién eres y cómo te gustaría apoyar a Data League. No es un compromiso: el equipo organizador te escribirá para conversarlo.</p>
             {!firebaseConfigured && <p className="err mt-6">Falta configurar Firebase (ver docs/firebase-setup.md).</p>}
             <form className="mt-12 grid max-w-3xl gap-6 md:grid-cols-2" noValidate onSubmit={handleSubmit(submit)}>

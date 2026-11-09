@@ -25,19 +25,13 @@ service cloud.firestore {
 
     function validMember(m) {
       return m is map
-        && m.keys().hasOnly(['nombres', 'apellidos', 'correo', 'whatsapp'])
-        && text(m.nombres, 80) && text(m.apellidos, 80)
+        && m.keys().hasOnly(['nombre', 'correo', 'whatsapp'])
+        && text(m.nombre, 100)
         && emailRe(m.correo) && m.correo == m.correo.lower()
         && phoneRe(m.whatsapp);
     }
 
-    function validDoc(d) {
-      return (d.tipoDocumento == 'DNI' && d.numeroDocumento.matches('^[0-9]{8}$'))
-        || (d.tipoDocumento == 'CE' && d.numeroDocumento.matches('^[A-Za-z0-9]{9,12}$'))
-        || (d.tipoDocumento == 'PASAPORTE' && d.numeroDocumento.matches('^[A-Za-z0-9]{6,12}$'));
-    }
-
-    // Nadie repite correo: ni los integrantes entre sí ni con el líder (RN-06).
+    // Nadie repite correo: ni los integrantes entre sí ni con quien lidera (RN-06).
     function distinctEmails(d) {
       let m = d.integrantes;
       let n = m.size();
@@ -46,39 +40,23 @@ service cloud.firestore {
         && (n < 3 || (m[2].correo != d.correo && m[2].correo != m[0].correo && m[2].correo != m[1].correo));
     }
 
+    // Postulación mínima: nombre, celular y correo de cada persona, más la aceptación de datos y bases.
     function validPostulacion(d) {
-      return d.keys().hasOnly([
-          'edicion', 'uid', 'modo', 'track', 'estado', 'nombres', 'apellidos', 'tipoDocumento', 'numeroDocumento',
-          'correo', 'whatsapp', 'fechaNacimiento', 'tipoInstitucion', 'institucion', 'carrera', 'ciclo', 'nivelDatos',
-          'areasInteres', 'comoSeEntero', 'nombreEquipo', 'integrantes', 'pideEquipo',
-          'declaracionRequisitos', 'consentimientoDatos', 'aceptaBases', 'versionTextosLegales', 'creadoEn', 'actualizadoEn'
-        ])
+      return d.keys().hasOnly(['edicion', 'uid', 'modo', 'estado', 'nombre', 'whatsapp', 'correo', 'integrantes', 'consentimiento', 'versionTextosLegales', 'creadoEn', 'actualizadoEn'])
         && d.edicion == '2026-uni'
         && d.uid == request.auth.uid
         && d.modo in ['equipo', 'individual']
-        && d.track in ['01', '02', '03', '04', '05']
-        && text(d.nombres, 80) && text(d.apellidos, 80)
-        && d.tipoDocumento in ['DNI', 'CE', 'PASAPORTE'] && d.numeroDocumento is string && validDoc(d)
-        && emailRe(d.correo) && d.correo == request.auth.token.email.lower()
+        && text(d.nombre, 100)
         && phoneRe(d.whatsapp)
-        && d.fechaNacimiento is timestamp && d.fechaNacimiento <= request.time - duration.value(6574, 'd') // 18 años (4 o 5 años bisiestos)
-        && d.tipoInstitucion in ['universidad', 'instituto'] && text(d.institucion, 120) && text(d.carrera, 120)
-        && d.ciclo is int && d.ciclo >= 1 && d.ciclo <= 12
-        && d.nivelDatos in ['ninguno', 'basico', 'intermedio', 'avanzado']
-        && d.areasInteres is list && d.areasInteres.size() >= 1 && d.areasInteres.size() <= 8
-        && text(d.comoSeEntero, 60)
-        && d.declaracionRequisitos == true && d.consentimientoDatos == true && d.aceptaBases == true
+        && emailRe(d.correo) && d.correo == request.auth.token.email.lower()
+        && d.consentimiento == true
         && text(d.versionTextosLegales, 20)
         && (
           (d.modo == 'equipo'
-            && text(d.nombreEquipo, 60)
-            && d.integrantes is list && d.integrantes.size() >= 1 && d.integrantes.size() <= 3   // equipo de 2 a 4 con el líder
-            && distinctEmails(d)
-            && !('pideEquipo' in d))
+            && d.integrantes is list && d.integrantes.size() >= 1 && d.integrantes.size() <= 3   // equipo de 2 a 4 con quien lidera
+            && distinctEmails(d))
           ||
-          (d.modo == 'individual'
-            && d.pideEquipo is bool
-            && !('integrantes' in d) && !('nombreEquipo' in d))
+          (d.modo == 'individual' && !('integrantes' in d))
         );
     }
 
@@ -154,6 +132,21 @@ service cloud.firestore {
     match /sponsors/{id} {
       allow create: if validSponsor(request.resource.data);
       allow read, update, delete: if isAdmin();
+    }
+
+    // ---------- Inscripciones a las jornadas virtuales: id = {evento}_{uid}; cada persona gestiona solo la suya ----------
+    match /inscripciones/{id} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['evento', 'uid', 'nombre', 'correo', 'creadoEn'])
+        && request.resource.data.evento in ['kickoff', 'ml', 'ia', 'gobierno']
+        && request.resource.data.uid == request.auth.uid
+        && id == request.resource.data.evento + '_' + request.auth.uid
+        && text(request.resource.data.nombre, 100)
+        && request.resource.data.correo == request.auth.token.email.lower()
+        && request.resource.data.creadoEn == request.time;
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
     }
 
     match /notasAdmin/{id} {

@@ -39,7 +39,7 @@ export default function AuthModal({ open, onClose, onSignedIn, title = "Inicia s
       onClick={(e) => { if (e.target === ref.current) onClose(); }}>
       <div className="auth-box">
         <button type="button" className="auth-x" aria-label="Cerrar" onClick={onClose}>×</button>
-        <h2 id="auth-title" className="display text-[clamp(1.75rem,5vw,2.5rem)]">{title}</h2>
+        <h2 id="auth-title" className="title text-[clamp(1.75rem,5vw,2.5rem)]">{title}</h2>
         <p className="mt-4 text-ink">{text}</p>
         {firebaseConfigured ? (
           <button type="button" className="btn mt-8 w-full gap-3" disabled={busy || loading} onClick={() => void go()}>

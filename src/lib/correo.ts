@@ -11,11 +11,11 @@ export const correoConfigurado = Boolean(SERVICE && TEMPLATE && KEY);
 export type EstadoConCorreo = "aprobada" | "observada" | "rechazada";
 export const tieneCorreo = (e: string): e is EstadoConCorreo => e === "aprobada" || e === "observada" || e === "rechazada";
 
-const equipoTxt = (p: Post) => (p.modo === "equipo" ? ` con tu equipo «${p.nombreEquipo}»` : "");
+const equipoTxt = (p: Post) => (p.modo === "equipo" ? " con tu equipo" : "");
 
 /** Texto del correo según el nuevo estado. Texto plano: la plantilla de EmailJS lo imprime tal cual. */
 export function redactar(p: Post, estado: EstadoConCorreo, nota: string) {
-  const hola = `Hola ${p.nombres},`;
+  const hola = `Hola ${p.nombre.split(" ")[0]},`;
   const extra = nota.trim() ? `\n\nMensaje del equipo organizador:\n${nota.trim()}` : "";
   const contacto = CONTACTO ? `\n\nSi tienes dudas, escríbenos a ${CONTACTO} o responde este correo.` : "\n\nSi tienes dudas, responde este correo.";
   const firma = "\n\nEquipo Data League\nAprende. Demuestra. Conecta.";
@@ -42,7 +42,7 @@ export async function enviarCorreoEstado(p: Post, estado: EstadoConCorreo, nota:
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         service_id: SERVICE, template_id: TEMPLATE, user_id: KEY,
-        template_params: { to_email: p.correo, to_name: `${p.nombres} ${p.apellidos}`, subject, message, reply_to: CONTACTO ?? "" },
+        template_params: { to_email: p.correo, to_name: p.nombre, subject, message, reply_to: CONTACTO ?? "" },
       }),
     });
     if (r.ok) return null;

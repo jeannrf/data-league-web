@@ -2,7 +2,7 @@ import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, setDoc, getDoc, updateDoc, writeBatch, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from "firebase/firestore";
 
 let env: RulesTestEnvironment;
 before(async () => {
@@ -15,21 +15,16 @@ after(async () => { await env.cleanup(); });
 beforeEach(async () => { await env.clearFirestore(); });
 
 const ADM = { email: "admin@dataleague.test", firebase: { sign_in_provider: "password" } };
-const adult = Timestamp.fromDate(new Date("2003-05-10T12:00:00Z"));
-const member = (n: number) => ({ nombres: `Persona${n}`, apellidos: "Prueba", correo: `m${n}@correo.pe`, whatsapp: `+5198765432${n}` });
+const member = (n: number) => ({ nombre: `Persona ${n}`, correo: `m${n}@correo.pe`, whatsapp: `+5198765432${n}` });
 const base = (over: Record<string, unknown> = {}) => ({
-  edicion: "2026-uni", uid: "u1", modo: "equipo", track: "03", estado: "registrada",
-  nombres: "Lider", apellidos: "Prueba", tipoDocumento: "DNI", numeroDocumento: "12345678",
-  correo: "lider@correo.pe", whatsapp: "+51987654321", fechaNacimiento: adult,
-  tipoInstitucion: "universidad", institucion: "UNI", carrera: "Estadística", ciclo: 6, nivelDatos: "basico",
-  areasInteres: ["salud"], comoSeEntero: "Instagram",
-  nombreEquipo: "Los Nodos", integrantes: [member(1)],
-  declaracionRequisitos: true, consentimientoDatos: true, aceptaBases: true, versionTextosLegales: "2026-11-08",
+  edicion: "2026-uni", uid: "u1", modo: "equipo", estado: "registrada",
+  nombre: "Lider Prueba", whatsapp: "+51987654321", correo: "lider@correo.pe", integrantes: [member(1)],
+  consentimiento: true, versionTextosLegales: "2026-11-08",
   creadoEn: serverTimestamp(), actualizadoEn: serverTimestamp(), ...over,
 });
 const individual = (over: Record<string, unknown> = {}) => {
-  const d: Record<string, unknown> = base({ modo: "individual", pideEquipo: true, ...over });
-  delete d.integrantes; delete d.nombreEquipo;
+  const d: Record<string, unknown> = base({ modo: "individual", ...over });
+  delete d.integrantes;
   return d;
 };
 
@@ -57,17 +52,15 @@ test("equipo de 5 personas (líder + 4) se rechaza", async () => {
   await assertFails(submit("u1", "lider@correo.pe", base({ integrantes: [member(1), member(2), member(3), member(4)] }),
     [...leaderIdx, ...[1, 2, 3, 4].map((n) => ({ id: `m${n}@correo.pe`, rol: "integrante" }))]));
 });
-test("menor de 18 años se rechaza", async () => {
-  await assertFails(submit("u1", "lider@correo.pe", base({ fechaNacimiento: Timestamp.fromDate(new Date("2012-01-01T12:00:00Z")) }), leaderIdx));
+test("sin aceptar datos y bases se rechaza", async () => {
+  await assertFails(submit("u1", "lider@correo.pe", base({ consentimiento: false }), leaderIdx));
 });
-test("sin consentimiento de datos se rechaza", async () => {
-  await assertFails(submit("u1", "lider@correo.pe", base({ consentimientoDatos: false }), leaderIdx));
+test("celular inválido o nombre vacío se rechaza", async () => {
+  await assertFails(submit("u1", "lider@correo.pe", base({ whatsapp: "987654321" }), leaderIdx));
+  await assertFails(submit("u1", "lider@correo.pe", base({ nombre: "  " }), leaderIdx));
 });
-test("track inexistente se rechaza", async () => {
-  await assertFails(submit("u1", "lider@correo.pe", base({ track: "09" }), leaderIdx));
-});
-test("DNI con formato inválido se rechaza", async () => {
-  await assertFails(submit("u1", "lider@correo.pe", base({ numeroDocumento: "123" }), leaderIdx));
+test("campos que ya no existen (documento, track, edad) se rechazan como extra", async () => {
+  await assertFails(submit("u1", "lider@correo.pe", base({ track: "01" }), leaderIdx));
 });
 test("el correo de la postulación debe ser el de la cuenta", async () => {
   await assertFails(submit("u1", "lider@correo.pe", base({ correo: "otro@correo.pe" }), [{ id: "otro@correo.pe", rol: "lider" }]));
@@ -157,5 +150,28 @@ test("una cuenta de Google con el correo del admin NO es admin; tampoco una de c
   await assertFails(getDoc(doc(google, "sponsors", "s1")));
   await assertFails(getDoc(doc(otro, "sponsors", "s1")));
   await assertSucceeds(getDoc(doc(env.authenticatedContext("adm", ADM).firestore(), "sponsors", "s1")));
+});
+
+// ---------- Inscripciones a jornadas ----------
+const insc = (evento: string, uid: string, over: Record<string, unknown> = {}) => ({ evento, uid, nombre: "Ana", correo: "ana@correo.pe", creadoEn: serverTimestamp(), ...over });
+test("una persona se inscribe y se desinscribe de una jornada; no puede hacerlo por otra", async () => {
+  const ana = env.authenticatedContext("u1", { email: "ana@correo.pe" }).firestore();
+  await assertSucceeds(setDoc(doc(ana, "inscripciones", "kickoff_u1"), insc("kickoff", "u1")));
+  await assertFails(setDoc(doc(ana, "inscripciones", "ml_u2"), insc("ml", "u2")));                 // a nombre de otra persona
+  await assertFails(setDoc(doc(ana, "inscripciones", "otro_u1"), insc("otro", "u1")));             // evento que no existe
+  await assertFails(setDoc(doc(ana, "inscripciones", "ia_u1"), insc("ia", "u1", { correo: "otro@correo.pe" })));
+  await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), "inscripciones", "ia_u1"), insc("ia", "u1")));
+  await assertSucceeds(deleteDoc(doc(ana, "inscripciones", "kickoff_u1")));
+});
+test("cada quien ve solo sus inscripciones; el admin ve todas", async () => {
+  const ana = env.authenticatedContext("u1", { email: "ana@correo.pe" }).firestore();
+  await assertSucceeds(setDoc(doc(ana, "inscripciones", "kickoff_u1"), insc("kickoff", "u1")));
+  const { getDocs, collection, query, where } = await import("firebase/firestore");
+  await assertSucceeds(getDocs(query(collection(ana, "inscripciones"), where("uid", "==", "u1"))));
+  await assertFails(getDocs(collection(ana, "inscripciones")));                                    // lista completa: no
+  const otra = env.authenticatedContext("u2", { email: "bea@correo.pe" }).firestore();
+  await assertFails(getDoc(doc(otra, "inscripciones", "kickoff_u1")));
+  await assertFails(deleteDoc(doc(otra, "inscripciones", "kickoff_u1")));
+  await assertSucceeds(getDocs(collection(env.authenticatedContext("adm", ADM).firestore(), "inscripciones")));
 });
 assert.ok(true);

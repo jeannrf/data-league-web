@@ -36,9 +36,31 @@ function ApplyButton() {
 
 const NAV = [["#tracks", "Tracks"], ["#cronograma", "Cronograma"], ["#requisitos", "Requisitos"], ["#faq", "Preguntas"]] as const;
 
+/** «Iniciar sesión» abre la ventana de Google; con sesión iniciada se vuelve «Mi cuenta». */
+function AccountButton({ onNavigate, block }: { onNavigate?: () => void; block?: boolean }) {
+  const { user, loading } = useAuth();
+  const [open, setOpen] = useState(false);
+  if (loading) return null;
+  const cls = `btn btn-ghost btn-sm no-underline${block ? " w-full" : ""}`;
+  if (user) return <Link to="/cuenta" onClick={onNavigate} className={cls}>Mi cuenta</Link>;
+  return (
+    <>
+      <button type="button" className={cls} onClick={() => setOpen(true)}>Iniciar sesión</button>
+      {open && <AuthModal open onClose={() => setOpen(false)} onSignedIn={() => { setOpen(false); onNavigate?.(); }} title="Inicia sesión" text="Usa tu cuenta de Google para postular, inscribirte a las jornadas y ver tu cuenta." />}
+    </>
+  );
+}
+
 function Nav() {
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
+  const [solid, setSolid] = useState(false);
+  useEffect(() => {
+    const on = () => setSolid(window.scrollY > 24);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -48,26 +70,30 @@ function Nav() {
     return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
   }, [open]);
   return (
-    <header className="absolute inset-x-0 top-0 z-30">
-      <div className="wrap flex items-center justify-between py-5">
+    <header className={`site-nav fixed inset-x-0 top-0 z-30 ${solid || open ? "is-solid" : ""}`}>
+      <div className="wrap flex items-center justify-between py-4">
         <a href="#top" aria-label="Data League, inicio" className="whitespace-nowrap"><Wordmark className="text-2xl" /></a>
-        <nav aria-label="Principal" className="hidden gap-5 text-[0.95rem] font-medium md:flex lg:gap-8">
+        <nav aria-label="Principal" className="hidden items-center gap-7 text-[0.95rem] font-medium lg:flex">
           {NAV.map(([h, t]) => (
             <a key={h} href={h} className="text-soft no-underline transition-colors hover:text-accent">{t}</a>
           ))}
+          <Link to="/eventos" className="text-soft no-underline transition-colors hover:text-accent">Eventos</Link>
+          <AccountButton />
         </nav>
-        <button ref={btn} type="button" className="burger md:hidden" aria-label={open ? "Cerrar menú" : "Abrir menú"} aria-expanded={open} aria-controls="menu-movil" onClick={() => setOpen((o) => !o)}>
+        <button ref={btn} type="button" className="burger lg:hidden" aria-label={open ? "Cerrar menú" : "Abrir menú"} aria-expanded={open} aria-controls="menu-movil" onClick={() => setOpen((o) => !o)}>
           <span /><span /><span />
         </button>
       </div>
       {open && (
-        <div id="menu-movil" className="mobile-menu md:hidden" role="dialog" aria-modal="true" aria-label="Menú">
+        <div id="menu-movil" className="mobile-menu lg:hidden" role="dialog" aria-modal="true" aria-label="Menú">
           <nav aria-label="Menú móvil" className="grid">
             {NAV.map(([h, t]) => (
               <a key={h} href={h} onClick={() => setOpen(false)} className="display border-b border-line py-5 text-[2.25rem] no-underline">{t}</a>
             ))}
+            <Link to="/eventos" onClick={() => setOpen(false)} className="display border-b border-line py-5 text-[2.25rem] no-underline">Eventos</Link>
           </nav>
           <div className="mt-10 flex flex-wrap gap-3"><ApplyButton /><Link to="/sponsor" onClick={() => setOpen(false)} className="btn btn-ghost no-underline">Sé sponsor</Link></div>
+          <div className="mt-3"><AccountButton onNavigate={() => setOpen(false)} block /></div>
           <p className="mt-6 text-sm font-bold uppercase tracking-wide text-accent">Cierre: 29 de noviembre, 23:59</p>
         </div>
       )}
@@ -109,7 +135,7 @@ function About() {
   return (
     <section data-sec className="border-t border-line" aria-labelledby="que-es">
       <div className="wrap py-24 md:py-40">
-        <h2 id="que-es" data-node className="display h-xl">Una liga que conecta universidades</h2>
+        <h2 id="que-es" data-node className="title h-xl">Una liga que conecta universidades</h2>
         <div className="mt-12 grid gap-8 md:mt-16 md:grid-cols-2 md:gap-14">
           <p className="max-w-[34ch] text-[1.5rem] font-bold leading-tight text-ink">Data League reúne a estudiantes de universidades e institutos de todo el país alrededor de un mismo desafío con datos.</p>
           <p className="measure">Aprenden en las jornadas, demuestran lo que saben y se conectan con otras comunidades. Como las grandes ligas universitarias, no pertenece a una sola institución: esta edición se juega en la UNI, en Lima, y en las próximas la sede cambiará.</p>
@@ -123,14 +149,14 @@ function Tracks() {
   return (
     <section id="tracks" data-sec data-ambient="off" className="border-t border-line" aria-labelledby="h-tracks">
       <div className="wrap py-24 md:py-40">
-        <h2 id="h-tracks" data-node className="display h-xl">Elige tu track</h2>
+        <h2 id="h-tracks" data-node className="title h-xl">Elige tu track</h2>
         <p className="measure mt-5 text-xl text-ink">Cada equipo o postulante individual trabaja en un solo eje temático.</p>
         <ol className="mt-14 md:mt-20">
           {tracks.map((t) => (
             <li key={t.id} className="rank-row">
               <span className="num display text-3xl md:text-4xl" aria-hidden="true">{t.id}</span>
               <div>
-                <h3 className="display text-[clamp(1.3rem,2.4vw,2rem)] leading-[1]"><span className="sr-only">Track {t.id}: </span>{t.nombre}</h3>
+                <h3 className="title text-[clamp(1.3rem,2.4vw,2rem)] leading-[1]"><span className="sr-only">Track {t.id}: </span>{t.nombre}</h3>
                 <p className="t-desc mt-2 max-w-[60ch]">{t.descripcion}</p>
               </div>
               <Constellation id={t.id} />
@@ -159,7 +185,7 @@ function Schedule() {
   return (
     <section id="cronograma" data-sec data-ambient="off" className="border-t border-line" aria-labelledby="h-cron">
       <div className="wrap py-24 md:py-40">
-        <h2 id="h-cron" data-node className="display h-xl">Del 27 de noviembre al 5 de diciembre</h2>
+        <h2 id="h-cron" data-node className="title h-xl">Del 27 de noviembre al 5 de diciembre</h2>
         <p className="measure mt-5 text-xl text-ink">Cuatro jornadas virtuales y una final presencial.</p>
         <div className="route-wrap relative mt-16 md:mt-24" data-lit={lit}>
         <span className="travel" aria-hidden="true" />
@@ -177,6 +203,7 @@ function Schedule() {
           })}
         </ol>
         </div>
+        <Link to="/eventos" className="btn btn-ghost mt-12 no-underline">Inscribirme a las jornadas virtuales</Link>
       </div>
     </section>
   );
@@ -186,7 +213,7 @@ function Requirements() {
   return (
     <section id="requisitos" data-sec className="border-t border-line" aria-labelledby="h-req">
       <div className="wrap py-24 md:py-40">
-        <h2 id="h-req" data-node className="display h-xl">Para postular necesitas</h2>
+        <h2 id="h-req" data-node className="title h-xl">Para postular necesitas</h2>
         <ul className="mt-14 md:mt-20">
           {requisitos.map((r) => (
             <li key={r} className="border-t border-line py-6 text-[1.25rem] font-bold leading-tight text-ink last:border-b md:text-[1.5rem]">{r}</li>
@@ -233,7 +260,7 @@ function Prizes() {
   return (
     <section data-sec className="border-t border-line" aria-labelledby="h-premios">
       <div className="wrap py-24 md:py-36">
-        <h2 id="h-premios" data-node className="display h-lg">Premios y jurado</h2>
+        <h2 id="h-premios" data-node className="title h-lg">Premios y jurado</h2>
         <p className="display stroke-text mt-4 text-[clamp(1.9rem,6vw,4.5rem)] leading-[0.9] text-accent">Próximamente</p>
       </div>
     </section>
@@ -248,7 +275,7 @@ function Allies() {
   return (
     <section data-sec data-ambient="off" className="border-t border-line" aria-labelledby="h-aliados">
       <div className="wrap py-24 md:py-40">
-        <h2 id="h-aliados" data-node className="display h-xl">Quienes hacen la liga</h2>
+        <h2 id="h-aliados" data-node className="title h-xl">Quienes hacen la liga</h2>
         <AlliesNet aliados={lista} />
       </div>
     </section>
@@ -259,7 +286,7 @@ function Sponsors() {
   return (
     <section id="sponsors" data-sec className="border-t border-line" aria-labelledby="h-sponsors">
       <div className="wrap grid gap-10 py-24 md:grid-cols-12 md:py-40">
-        <h2 id="h-sponsors" data-node className="display h-xl md:col-span-7">Sé sponsor de Data League</h2>
+        <h2 id="h-sponsors" data-node className="title h-xl md:col-span-7">Sé sponsor de Data League</h2>
         <div className="md:col-span-5 md:pt-3">
           <p className="measure text-[1.375rem] font-bold leading-tight text-ink">¿Tu empresa u organización quiere apoyar a la próxima generación de talento en datos?</p>
           <p className="measure mt-5">Cuéntanos quién eres y cómo te gustaría participar. El equipo organizador te escribirá para conversarlo.</p>
@@ -274,7 +301,7 @@ function Faq() {
   return (
     <section id="faq" data-sec className="border-t border-line" aria-labelledby="h-faq">
       <div className="wrap py-24 md:py-40">
-        <h2 id="h-faq" data-node className="display h-xl">Preguntas frecuentes</h2>
+        <h2 id="h-faq" data-node className="title h-xl">Preguntas frecuentes</h2>
         <div className="mt-14 md:mt-20">
           {faq.map((f) => (
             <details key={f.p} className="faq border-b border-line first:border-t">
@@ -289,38 +316,34 @@ function Faq() {
 }
 
 function Footer() {
-  const links = [["#tracks", "Tracks"], ["#cronograma", "Cronograma"], ["#requisitos", "Requisitos"], ["#sponsors", "Sponsors"], ["#faq", "Preguntas frecuentes"]];
   return (
-    <footer data-sec data-end className="border-t border-line">
-      <div className="wrap grid gap-14 pt-20 lg:grid-cols-12 md:pt-28">
-        <div className="lg:col-span-7">
-          <p className="display text-[min(15vw,8.5rem)] leading-[0.86] lg:text-[min(9vw,8.5rem)]" data-node>
-            <span className="block">Data</span>
-            <span className="block text-primary">League</span>
-          </p>
-          <p className="display mt-6 text-[clamp(1.1rem,3vw,1.6rem)] leading-none">Aprende. Demuestra. Conecta.</p>
+    <footer data-sec data-end data-ambient="off" className="site-footer">
+      <div className="wrap grid gap-10 py-14 md:grid-cols-12 md:py-16">
+        <div className="md:col-span-6">
+          <Wordmark className="text-3xl" />
+          <p className="mt-3 text-[1.05rem] text-soft">Aprende. Demuestra. Conecta.</p>
+          <p className="mt-6 max-w-[42ch] text-[0.95rem] text-soft">La liga de ciencia de datos entre universidades e institutos del Perú. Edición 2026 en la Universidad Nacional de Ingeniería, Lima.</p>
         </div>
-        <div className="grid content-between gap-12 lg:col-span-5">
-          <nav aria-label="Pie de página">
-            <ul className="space-y-1">
-              {links.map(([h, t]) => (
-                <li key={h}>
-                  <a href={h} className="display block border-b border-line py-3 text-[clamp(1.4rem,2.4vw,2rem)] no-underline transition-colors hover:text-accent">{t}</a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <div>
-            <p className="mb-4 font-bold text-ink">Cierre de postulaciones: 29 de noviembre, 23:59</p>
-            <ApplyButton />
-          </div>
+        <nav aria-label="Pie de página" className="md:col-span-3">
+          <p className="foot-h">Explora</p>
+          <ul className="mt-4 space-y-2.5 text-[0.95rem]">
+            {NAV.map(([h, t]) => <li key={h}><a href={h} className="text-soft no-underline hover:text-accent">{t}</a></li>)}
+            <li><Link to="/eventos" className="text-soft no-underline hover:text-accent">Eventos</Link></li>
+          </ul>
+        </nav>
+        <div className="md:col-span-3">
+          <p className="foot-h">Participa</p>
+          <ul className="mt-4 space-y-2.5 text-[0.95rem]">
+            <li><Link to="/postular" className="text-soft no-underline hover:text-accent">Postula tu equipo</Link></li>
+            <li><Link to="/sponsor" className="text-soft no-underline hover:text-accent">Sé sponsor</Link></li>
+          </ul>
+          <p className="mt-6 text-[0.9rem] text-soft">Cierre: 29 de noviembre, 23:59</p>
         </div>
       </div>
-      <div className="wrap mt-20 md:mt-28">
-        <div className="flex flex-col gap-3 border-t border-line py-8 text-[0.95rem] text-soft md:flex-row md:items-center md:justify-between">
-          <p>Data League 2026 · Universidad Nacional de Ingeniería, Lima</p>
-          <p>Contacto y redes: próximamente · Política de privacidad y bases: próximamente</p>
-          <a href="#top" className="whitespace-nowrap font-black uppercase tracking-wide text-accent no-underline hover:underline">Volver arriba ↑</a>
+      <div className="foot-bar">
+        <div className="wrap flex flex-col gap-2 py-5 text-[0.85rem] text-soft md:flex-row md:items-center md:justify-between">
+          <p>© 2026 Data League · Contacto y redes: próximamente · Política de privacidad y bases: próximamente</p>
+          <a href="#top" className="whitespace-nowrap font-black uppercase tracking-[0.12em] text-accent no-underline hover:underline">Volver arriba ↑</a>
         </div>
       </div>
     </footer>
@@ -329,7 +352,7 @@ function Footer() {
 
 export default function Landing() {
   return (
-    <div id="stage">
+    <div id="stage" className="reading">
       <Ambient />
       <Line />
       <a href="#que-es" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:bg-accent focus:px-4 focus:py-2 focus:text-bg">Saltar al contenido</a>

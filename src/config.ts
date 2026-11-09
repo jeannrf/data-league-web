@@ -25,17 +25,28 @@ export type Jornada = {
   mes: string;
   tema: string;
   modalidad: "virtual" | "presencial" | "cierre";
+  /** Solo las jornadas virtuales tienen id: son las que admiten inscripción. */
+  id?: string;
+  /** Enlace de la transmisión; se muestra a quien se inscribió cuando exista ([TBD-06]). */
+  enlace?: string;
+  /** Qué es el tema (definición, sin prometer contenido del programa). Editable. */
+  descripcion?: string;
+  /** Imagen del flyer (por ejemplo "/flyers/kickoff.png", en la carpeta public). Si falta, se dibuja uno con la marca. */
+  flyer?: string;
 };
 
 // Kick-off: 27/11 (confirmado). Cierre y final marcados con modalidad propia.
 export const cronograma: Jornada[] = [
-  { fecha: "2026-11-27", dia: "27", mes: "NOV", tema: "Kick off y storytelling con datos", modalidad: "virtual" },
+  { id: "kickoff", fecha: "2026-11-27", dia: "27", mes: "NOV", tema: "Kick off y storytelling con datos", modalidad: "virtual", descripcion: "Arranque de Data League 2026. El storytelling con datos es el arte de contar una historia clara a partir de cifras y gráficos, para que las personas entiendan y actúen." },
   { fecha: "2026-11-29", dia: "29", mes: "NOV", tema: "Cierre de postulaciones, 23:59", modalidad: "cierre" },
-  { fecha: "2026-11-30", dia: "30", mes: "NOV", tema: "Machine Learning", modalidad: "virtual" },
-  { fecha: "2026-12-01", dia: "01", mes: "DIC", tema: "IA con aplicaciones y MVP", modalidad: "virtual" },
-  { fecha: "2026-12-02", dia: "02", mes: "DIC", tema: "Gobierno de datos", modalidad: "virtual" },
+  { id: "ml", fecha: "2026-11-30", dia: "30", mes: "NOV", tema: "Machine Learning", modalidad: "virtual", descripcion: "El machine learning (aprendizaje automático) es la rama de la inteligencia artificial en la que los modelos aprenden patrones a partir de datos para predecir o clasificar." },
+  { id: "ia", fecha: "2026-12-01", dia: "01", mes: "DIC", tema: "IA con aplicaciones y MVP", modalidad: "virtual", descripcion: "Cómo llevar la inteligencia artificial a aplicaciones reales y armar un MVP: la versión mínima de un producto, suficiente para probar una idea." },
+  { id: "gobierno", fecha: "2026-12-02", dia: "02", mes: "DIC", tema: "Gobierno de datos", modalidad: "virtual", descripcion: "El gobierno de datos reúne las reglas y responsabilidades para que los datos sean confiables, estén protegidos y se usen de forma responsable." },
   { fecha: "2026-12-05", dia: "05", mes: "DIC", tema: "Final en la UNI, Lima", modalidad: "presencial" },
 ];
+
+/** Jornadas virtuales en las que se puede uno inscribir desde la web. */
+export const eventos = cronograma.filter((j) => j.modalidad === "virtual" && j.id) as (Jornada & { id: string })[];
 
 export const requisitos = [
   "Ser estudiante activo de pregrado, universitario o de instituto.",

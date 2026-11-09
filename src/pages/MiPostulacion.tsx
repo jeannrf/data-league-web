@@ -3,15 +3,14 @@ import { Link, Navigate, useLocation } from "react-router";
 import { doc, getDoc, serverTimestamp, updateDoc, type Timestamp } from "firebase/firestore";
 import { useAuth } from "../lib/auth";
 import { db, firebaseConfigured } from "../lib/firebase";
-import { tracks } from "../config";
 import Shell from "../components/Shell";
 import Network from "../components/Network";
 import TeamNet from "../components/TeamNet";
 
-type Miembro = { nombres: string; apellidos: string; correo: string; whatsapp: string };
+type Miembro = { nombre: string; correo: string; whatsapp: string };
 type Post = {
-  modo: "equipo" | "individual"; track: string; estado: string; nombres: string; apellidos: string; correo: string; whatsapp: string;
-  institucion: string; carrera: string; ciclo: number; nombreEquipo?: string; integrantes?: Miembro[]; pideEquipo?: boolean; creadoEn?: Timestamp;
+  modo: "equipo" | "individual"; estado: string; nombre: string; correo: string; whatsapp: string;
+  integrantes?: Miembro[]; creadoEn?: Timestamp;
 };
 
 const estados: Record<string, { t: string; d: string }> = {
@@ -85,7 +84,6 @@ export default function MiPostulacion() {
   if (post === null) return <Navigate to="/postular" replace />;
 
   const est = estados[post?.estado ?? "registrada"];
-  const track = tracks.find((t) => t.id === post?.track);
 
   return (
     <Shell>
@@ -96,22 +94,18 @@ export default function MiPostulacion() {
             <p className="mt-2 font-bold">Ya estás dentro de Data League 2026. Te avisaremos por correo cuando haya novedades.</p>
           </div>
         )}
-        {enviada && post && <JoinMap members={(post.integrantes ?? []).map((m) => m.nombres.trim()[0]?.toUpperCase() ?? "·")} />}
-        <h1 className="display h-xl">Mi postulación</h1>
+        {enviada && post && <JoinMap members={(post.integrantes ?? []).map((m) => m.nombre.trim()[0]?.toUpperCase() ?? "·")} />}
+        <h1 className="title h-xl">Mi postulación</h1>
         {error && <p className="err mt-6" role="alert">{error}</p>}
         {post && (
           <>
             <p className="mt-8 text-2xl font-bold text-ink">Estado: <span className="text-accent">{est.t}</span></p>
             <p className="measure mt-2 text-xl">{est.d}</p>
             <dl className="summary mt-12">
-              <div className="sum-row"><dt>Modo</dt><dd>{post.modo === "equipo" ? `En equipo: ${post.nombreEquipo}` : "Individual"}</dd></div>
-              <div className="sum-row"><dt>Track</dt><dd>{track ? `${track.id} · ${track.nombre}` : post.track}</dd></div>
-              <div className="sum-row"><dt>Nombre</dt><dd>{post.nombres} {post.apellidos}</dd></div>
+              <div className="sum-row"><dt>Nombre</dt><dd>{post.nombre}</dd></div>
               <div className="sum-row"><dt>Contacto</dt><dd>{post.correo} · {post.whatsapp}</dd></div>
-              <div className="sum-row"><dt>Estudios</dt><dd>{post.carrera}, ciclo {post.ciclo} · {post.institucion}</dd></div>
-              {post.modo === "equipo"
-                ? post.integrantes?.map((m, i) => <div className="sum-row" key={i}><dt>Integrante {i + 1}</dt><dd>{m.nombres} {m.apellidos} · {m.correo}</dd></div>)
-                : <div className="sum-row"><dt>Equipo</dt><dd>{post.pideEquipo ? "Pediste que te asignemos uno" : "Participas solo"}</dd></div>}
+              <div className="sum-row"><dt>Modo</dt><dd>{post.modo === "equipo" ? `Equipo de ${1 + (post.integrantes?.length ?? 0)} personas` : "Individual"}</dd></div>
+              {post.integrantes?.map((m, i) => <div className="sum-row" key={i}><dt>Integrante {i + 1}</dt><dd>{m.nombre} · {m.correo} · {m.whatsapp}</dd></div>)}
             </dl>
             <p className="measure mt-8 text-muted">Si necesitas corregir algún dato, escríbenos: la edición desde esta página llegará pronto.</p>
           </>
