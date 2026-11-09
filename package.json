@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "emulators": "firebase emulators:start --only auth,firestore",
+    "test:form": "tsx --test tests/postulacion.test.ts",
     "test:rules": "firebase emulators:exec --only firestore \"tsx --test tests/rules.test.ts\"",
     "deploy:rules": "firebase deploy --only firestore:rules --project prod",
     "deploy": "npm run build && firebase deploy --only hosting,firestore:rules --project prod"

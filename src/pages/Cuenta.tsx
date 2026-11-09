@@ -9,6 +9,8 @@ import { eventos, POSTULACION_ABIERTA } from "../config";
 import { cancelarInscripcion, descargarIcs, nombreDe, useMisInscripciones } from "../lib/eventos";
 import { estadoTexto } from "../lib/admin";
 
+const iniciales = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+
 export default function Cuenta() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -36,41 +38,54 @@ export default function Cuenta() {
           </>
         ) : (
           <>
-            <h1 className="title h-xl">Mi cuenta</h1>
-            <p className="mt-4 text-xl text-ink">{nombreDe(user)} · <span className="text-soft">{user.email}</span></p>
+            <header className="acc-head">
+              <span className="acc-avatar" aria-hidden="true">{iniciales(nombreDe(user))}</span>
+              <div className="min-w-0 flex-1">
+                <p className="acc-kicker">Mi cuenta</p>
+                <h1 className="title text-[clamp(1.6rem,4vw,2.4rem)]">{nombreDe(user)}</h1>
+                <p className="mt-1 truncate text-soft">{user.email}</p>
+              </div>
+              <button type="button" className="btn btn-ghost acc-out" onClick={() => void signOut().then(() => navigate("/"))}>Cerrar sesión</button>
+            </header>
 
-            <section className="mt-12 border-t border-line pt-8" aria-labelledby="c-post">
-              <h2 id="c-post" className="title text-3xl">Mi postulación</h2>
-              {estado === undefined ? <p className="mt-4 text-soft" role="status">Cargando…</p>
-                : estado ? (<>
-                    <p className="mt-4 text-xl text-ink">Estado: <b className="text-accent">{estadoTexto(estado)}</b></p>
-                    <Link to="/mi-postulacion" className="btn btn-ghost mt-6 no-underline">Ver mi postulación</Link>
-                  </>)
-                  : (<>
-                    <p className="measure mt-4 text-soft">Todavía no postulaste a la liga.</p>
-                    {POSTULACION_ABIERTA && <Link to="/postular" className="btn mt-6 no-underline">Postular</Link>}
-                  </>)}
-            </section>
+            <div className="acc-grid">
+              <section className="acc-card" aria-labelledby="c-post">
+                <p className="acc-kicker">Liga 2026</p>
+                <h2 id="c-post" className="title text-2xl">Mi postulación</h2>
+                {estado === undefined ? <p className="mt-5 text-soft" role="status">Cargando…</p>
+                  : estado ? (<>
+                      <p className="mt-5"><span className={`acc-chip acc-${estado}`}>{estadoTexto(estado)}</span></p>
+                      <p className="mt-3 text-soft">Aquí puedes revisar los datos de tu equipo y el avance de tu postulación.</p>
+                      <Link to="/mi-postulacion" className="btn btn-ghost mt-auto no-underline">Ver mi postulación</Link>
+                    </>)
+                    : (<>
+                      <p className="mt-5 text-soft">Todavía no postulaste a la liga. Postula a tu equipo antes del 29 de noviembre.</p>
+                      {POSTULACION_ABIERTA && <Link to="/postular" className="btn mt-auto no-underline">Postular</Link>}
+                    </>)}
+              </section>
 
-            <section className="mt-12 border-t border-line pt-8" aria-labelledby="c-ev">
-              <h2 id="c-ev" className="title text-3xl">Mis jornadas</h2>
-              {mias.length === 0 ? <p className="measure mt-4 text-soft">No estás inscrito a ninguna jornada virtual.</p> : (
-                <ul className="mt-4">
-                  {mias.map((e) => (
-                    <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-4">
-                      <span className="text-xl font-bold text-ink">{e.dia} {e.mes} · {e.tema}</span>
-                      <span className="flex gap-5">
-                        <button type="button" className="link-btn" onClick={() => descargarIcs(e)}>Añadir al calendario</button>
-                        <button type="button" className="link-btn" onClick={() => { if (window.confirm("¿Cancelar tu inscripción a esta jornada?")) void cancelarInscripcion(user, e.id); }}>Cancelar</button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Link to="/eventos" className="btn btn-ghost mt-6 no-underline">Ver todas las jornadas</Link>
-            </section>
-
-            <button type="button" className="link-btn mt-14" onClick={() => void signOut().then(() => navigate("/"))}>Cerrar sesión</button>
+              <section className="acc-card" aria-labelledby="c-ev">
+                <p className="acc-kicker">Jornadas virtuales</p>
+                <h2 id="c-ev" className="title text-2xl">Mis jornadas</h2>
+                {mias.length === 0 ? <p className="mt-5 text-soft">No estás inscrito a ninguna jornada virtual.</p> : (
+                  <ul className="mt-4">
+                    {mias.map((e) => (
+                      <li key={e.id} className="acc-ev">
+                        <span className="acc-date"><b>{e.dia}</b>{e.mes}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-bold text-ink">{e.tema}</span>
+                          <span className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                            <button type="button" className="link-btn" onClick={() => descargarIcs(e)}>Añadir al calendario</button>
+                            <button type="button" className="link-btn" onClick={() => { if (window.confirm("¿Cancelar tu inscripción a esta jornada?")) void cancelarInscripcion(user, e.id); }}>Cancelar</button>
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link to="/eventos" className="btn btn-ghost mt-auto no-underline">{mias.length ? "Ver todas las jornadas" : "Explorar jornadas"}</Link>
+              </section>
+            </div>
           </>
         )}
       </div>
