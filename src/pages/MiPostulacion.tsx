@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation } from "react-router";
-import { doc, getDoc, serverTimestamp, updateDoc, type Timestamp } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, writeBatch, type Timestamp } from "firebase/firestore";
+import { EDICION } from "../config";
 import { useAuth } from "../lib/auth";
 import { db, firebaseConfigured } from "../lib/firebase";
 import Shell from "../components/Shell";
 
 type Miembro = { nombre: string; correo: string; whatsapp: string };
 type Post = {
-  modo: "equipo" | "individual"; estado: string; nombre: string; correo: string; whatsapp: string;
+  modo: "equipo" | "individual"; estado: string; nombre: string; correo: string; whatsapp: string; nombreEquipo?: string;
   integrantes?: Miembro[]; creadoEn?: Timestamp;
 };
 
@@ -38,9 +39,13 @@ export default function MiPostulacion() {
 
   async function retirar() {
     if (!user || !db) return;
-    if (!window.confirm("¿Seguro que quieres retirar tu postulación? Esta acción no se puede deshacer.")) return;
+    if (!window.confirm("¿Seguro que quieres retirar tu postulación? Podrás volver a postular mientras siga abierto el plazo.")) return;
     try {
-      await updateDoc(doc(db, "postulaciones", user.uid), { estado: "retirada", actualizadoEn: serverTimestamp() });
+      // Se libera el correo de cada persona del equipo para poder volver a postular.
+      const b = writeBatch(db);
+      b.update(doc(db, "postulaciones", user.uid), { estado: "retirada", actualizadoEn: serverTimestamp() });
+      for (const c of [user.email ?? "", ...(post?.integrantes ?? []).map((m) => m.correo)]) b.delete(doc(db, "correosEdicion", `${EDICION}_${c.toLowerCase()}`));
+      await b.commit();
       setPost((p) => (p ? { ...p, estado: "retirada" } : p));
     } catch { setError("No pudimos retirar la postulación. Escríbenos si el problema continúa."); }
   }
@@ -69,6 +74,7 @@ export default function MiPostulacion() {
             <dl className="summary mt-12 md:mt-4">
               <div className="sum-row"><dt>Nombre</dt><dd>{post.nombre}</dd></div>
               <div className="sum-row"><dt>Contacto</dt><dd>{post.correo} · {post.whatsapp}</dd></div>
+              {post.modo === "equipo" && post.nombreEquipo && <div className="sum-row"><dt>Nombre del equipo</dt><dd>{post.nombreEquipo}</dd></div>}
               <div className="sum-row"><dt>Modo</dt><dd>{post.modo === "equipo" ? `Equipo de ${1 + (post.integrantes?.length ?? 0)} personas` : "Individual"}</dd></div>
               {post.integrantes?.map((m, i) => <div className="sum-row" key={i}><dt>Integrante {i + 1}</dt><dd>{m.nombre} · {m.correo} · {m.whatsapp}</dd></div>)}
             </dl>
@@ -77,8 +83,9 @@ export default function MiPostulacion() {
         )}
         <div className="mt-12 flex flex-wrap md:mt-4 items-center gap-6">
           <Link to="/" className="btn btn-ghost btn-sm no-underline">Volver al inicio</Link>
+          {post?.estado === "retirada" && <Link to="/postular" className="btn btn-sm no-underline">Postular de nuevo</Link>}
           {post && post.estado !== "retirada" && <button className="link-btn" onClick={() => void retirar()}>Retirar mi postulación</button>}
-          <button className="link-btn" onClick={() => void signOut()}>Cerrar sesión</button>
+          <button className="link-btn link-danger" onClick={() => void signOut()}>Cerrar sesión</button>
         </div>
       </div>
     </Shell>

@@ -14,9 +14,11 @@ export class CorreoRepetido extends Error {
   constructor(public correo: string) { super(correo); }
 }
 
+/** true si ya tiene una postulación vigente. Una retirada no cuenta: puede volver a postular. */
 export async function existePostulacion(uid: string) {
   if (!db) return false;
-  return (await getDoc(doc(db, "postulaciones", uid))).exists();
+  const s = await getDoc(doc(db, "postulaciones", uid));
+  return s.exists() && s.data().estado !== "retirada";
 }
 
 export async function enviarPostulacion(user: User, v: PostulacionData) {
@@ -31,13 +33,13 @@ export async function enviarPostulacion(user: User, v: PostulacionData) {
     consentimiento: true, versionTextosLegales: VERSION_TEXTOS_LEGALES,
     creadoEn: serverTimestamp(), actualizadoEn: serverTimestamp(),
   };
-  if (equipo) data.integrantes = integrantes;
+  if (equipo) { data.integrantes = integrantes; data.nombreEquipo = (v.nombreEquipo ?? "").trim(); }
 
   const indices = [{ correo: email, rol: equipo ? "lider" : "individual" }, ...integrantes.map((m) => ({ correo: m.correo, rol: "integrante" }))];
   await runTransaction(firestore, async (tx) => {
     for (const i of indices) {
       const snap = await tx.get(doc(firestore, "correosEdicion", `${EDICION}_${i.correo}`));
-      if (snap.exists()) throw new CorreoRepetido(i.correo);
+      if (snap.exists() && snap.data().uid !== user.uid) throw new CorreoRepetido(i.correo);   // si es suyo, queda de una postulación retirada
     }
     tx.set(doc(firestore, "postulaciones", user.uid), data);
     for (const i of indices) tx.set(doc(firestore, "correosEdicion", `${EDICION}_${i.correo}`), { uid: user.uid, rol: i.rol });

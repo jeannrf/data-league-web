@@ -18,13 +18,14 @@ const ADM = { email: "admin@dataleague.test", firebase: { sign_in_provider: "pas
 const member = (n: number) => ({ nombre: `Persona ${n}`, correo: `m${n}@correo.pe`, whatsapp: `+5198765432${n}` });
 const base = (over: Record<string, unknown> = {}) => ({
   edicion: "2026-uni", uid: "u1", modo: "equipo", estado: "registrada",
-  nombre: "Lider Prueba", whatsapp: "+51987654321", correo: "lider@correo.pe", integrantes: [member(1)],
+  nombre: "Lider Prueba", whatsapp: "+51987654321", correo: "lider@correo.pe", nombreEquipo: "Los Datos", integrantes: [member(1)],
   consentimiento: true, versionTextosLegales: "2026-11-08",
   creadoEn: serverTimestamp(), actualizadoEn: serverTimestamp(), ...over,
 });
 const individual = (over: Record<string, unknown> = {}) => {
   const d: Record<string, unknown> = base({ modo: "individual", ...over });
   delete d.integrantes;
+  delete d.nombreEquipo;
   return d;
 };
 
@@ -44,6 +45,42 @@ test("equipo válido (líder + 1 integrante) se acepta", async () => {
 test("equipo de 4 personas (líder + 3) se acepta", async () => {
   await assertSucceeds(submit("u1", "lider@correo.pe", base({ integrantes: [member(1), member(2), member(3)] }),
     [...leaderIdx, ...[1, 2, 3].map((n) => ({ id: `m${n}@correo.pe`, rol: "integrante" }))]));
+});
+test("equipo sin nombre, o individual con nombre de equipo, se rechaza", async () => {
+  await assertFails(submit("u1", "lider@correo.pe", base({ nombreEquipo: "  " }), [...leaderIdx, { id: "m1@correo.pe", rol: "integrante" }]));
+  await assertFails(submit("u1", "lider@correo.pe", { ...individual(), nombreEquipo: "Los Datos" }, [{ id: "lider@correo.pe", rol: "individual" }]));
+});
+/** Retira la postulación y libera los correos en un solo lote, como hace la app. */
+async function retirar(uid: string, email: string, correos: string[]) {
+  const db = env.authenticatedContext(uid, { email }).firestore();
+  const batch = writeBatch(db);
+  batch.update(doc(db, "postulaciones", uid), { estado: "retirada", actualizadoEn: serverTimestamp() });
+  for (const c of correos) batch.delete(doc(db, "correosEdicion", `2026-uni_${c}`));
+  return batch.commit();
+}
+const equipoIdx = [...leaderIdx, { id: "m1@correo.pe", rol: "integrante" }];
+test("quien retiró su postulación puede volver a postular; sin retirar, no", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), equipoIdx));
+  await assertFails(submit("u1", "lider@correo.pe", base({ nombreEquipo: "Otro" }), equipoIdx));   // sigue vigente
+  await assertSucceeds(retirar("u1", "lider@correo.pe", ["lider@correo.pe", "m1@correo.pe"]));
+  await assertSucceeds(submit("u1", "lider@correo.pe", base({ nombreEquipo: "Segunda vez" }), equipoIdx));
+  const d = await getDoc(doc(env.authenticatedContext("u1", { email: "lider@correo.pe" }).firestore(), "postulaciones", "u1"));
+  assert.equal(d.data()?.estado, "registrada");
+  assert.equal(d.data()?.nombreEquipo, "Segunda vez");
+});
+test("retirar libera los correos para otra persona; ajena no puede borrarlos", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), equipoIdx));
+  const otra = env.authenticatedContext("u2", { email: "otra@correo.pe" }).firestore();
+  await assertFails(deleteDoc(doc(otra, "correosEdicion", "2026-uni_m1@correo.pe")));
+  const propia = env.authenticatedContext("u1", { email: "lider@correo.pe" }).firestore();
+  await assertFails(deleteDoc(doc(propia, "correosEdicion", "2026-uni_m1@correo.pe")));   // sin retirar, no se libera
+  await assertSucceeds(retirar("u1", "lider@correo.pe", ["lider@correo.pe", "m1@correo.pe"]));
+  await assertSucceeds(submit("u2", "otra@correo.pe", base({ uid: "u2", correo: "otra@correo.pe" }), [{ id: "otra@correo.pe", rol: "lider" }, { id: "m1@correo.pe", rol: "integrante" }]));
+});
+test("una postulación rechazada por el equipo organizador no se puede reemplazar", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), equipoIdx));
+  await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), "postulaciones", "u1"), { estado: "rechazada" }); });
+  await assertFails(submit("u1", "lider@correo.pe", base(), equipoIdx));
 });
 test("equipo de 1 persona (sin integrantes) se rechaza", async () => {
   await assertFails(submit("u1", "lider@correo.pe", base({ integrantes: [] }), leaderIdx));

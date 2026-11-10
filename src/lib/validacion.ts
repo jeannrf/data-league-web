@@ -19,6 +19,7 @@ export const postulacionSchema = z.object({
   correoLider: z.string(),
   nombre,
   celular,
+  nombreEquipo: z.string().trim().max(60, "Máximo 60 caracteres.").optional(),
   integrantes: z.array(integranteSchema).max(3, "Un equipo tiene como máximo 4 personas contándote."),
   acepta: z.literal(true, { message: "Marca la casilla para poder enviar tu postulación." }),
 }).superRefine((v, ctx) => {
@@ -29,9 +30,11 @@ export type PostulacionForm = z.input<typeof postulacionSchema>;
 export type PostulacionData = z.output<typeof postulacionSchema>;
 type Issue = { path: (string | number)[]; message: string };
 
-/** Datos repetidos dentro del equipo: correos, y nombre o celular iguales a los de quien postula. */
+/** Equipo sin nombre y datos repetidos dentro del equipo: correos, y nombre o celular iguales a los de quien postula. */
 export function crossIssues(v: Partial<PostulacionForm>): Issue[] {
   const out: Issue[] = [];
+  if ((v.integrantes ?? []).length > 0 && !(v.nombreEquipo ?? "").trim())
+    out.push({ path: ["nombreEquipo"], message: "Ponle un nombre a tu equipo." });
   const vistos = new Set([(v.correoLider ?? "").toLowerCase()]);
   const miNombre = (v.nombre ?? "").trim().toLowerCase();
   const miCelular = normalizarCelular(v.celular ?? "");

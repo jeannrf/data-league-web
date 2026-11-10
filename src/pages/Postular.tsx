@@ -32,7 +32,7 @@ export default function Postular() {
   const restored = useRef(false);
 
   const methods = useForm<PostulacionForm, unknown, PostulacionData>({
-    resolver: zodResolver(postulacionSchema), defaultValues: { nombre: "", celular: "", integrantes: [], correoLider: "" } as unknown as PostulacionForm, mode: "onTouched",
+    resolver: zodResolver(postulacionSchema), defaultValues: { nombre: "", celular: "", nombreEquipo: "", integrantes: [], correoLider: "" } as unknown as PostulacionForm, mode: "onTouched",
   });
   const { register, control, handleSubmit, watch, formState: { errors } } = methods;
   const { fields, append, remove } = useFieldArray({ control, name: "integrantes" });
@@ -51,7 +51,7 @@ export default function Postular() {
     const mail = (user.email ?? "").toLowerCase();
     try {
       const raw = localStorage.getItem(draftKey);
-      methods.reset({ nombre: user.displayName ?? "", celular: "", integrantes: [], ...(raw ? JSON.parse(raw) : {}), correoLider: mail } as PostulacionForm);
+      methods.reset({ nombre: user.displayName ?? "", celular: "", nombreEquipo: "", integrantes: [], ...(raw ? JSON.parse(raw) : {}), correoLider: mail } as PostulacionForm);
     } catch { methods.setValue("correoLider", mail); }
   }, [user, draftKey, methods]);
   useEffect(() => {
@@ -100,7 +100,7 @@ export default function Postular() {
             <div>
               <div>
                 <h1 className="title h-xl">Postular</h1>
-                <p className="mt-4 text-soft">Sesión: <b className="text-ink">{user.email}</b> · <button type="button" className="link-btn" onClick={() => void signOut()}>Cerrar sesión</button> · Cierra el 29 de noviembre, 23:59</p>
+                <p className="mt-4 text-soft">Sesión: <b className="text-ink">{user.email}</b> · <button type="button" className="link-btn link-danger" onClick={() => void signOut()}>Cerrar sesión</button> · Cierra el 29 de noviembre, 23:59</p>
 
                 <form className="mt-10 grid gap-12" noValidate onSubmit={handleSubmit(submit)}>
                   <section aria-labelledby="t-tus-datos">
@@ -119,6 +119,11 @@ export default function Postular() {
                     <h2 id="t-equipo" className="title text-3xl">Tu equipo</h2>
                     <p className="measure mt-3 text-ink">Tú eres la persona 1. ¿Vas con equipo? Agrega a las <b>otras</b> personas, de 1 a 3, con sus propios datos. No necesitan cuenta. Si vas solo, sáltate esto.</p>
                     <div className="mt-6 grid gap-8">
+                      {fields.length > 0 && (
+                        <div className="max-w-xl">
+                          <Field label="Nombre del equipo" name="nombreEquipo"><input autoComplete="off" maxLength={60} {...aria("nombreEquipo")} {...register("nombreEquipo")} /></Field>
+                        </div>
+                      )}
                       {fields.map((f, i) => (
                         <fieldset key={f.id} className="member">
                           <legend className="title text-2xl">Persona {i + 2} de tu equipo</legend>

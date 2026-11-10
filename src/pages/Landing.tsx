@@ -3,7 +3,6 @@ import Network from "../components/Network";
 import Countdown from "../components/Countdown";
 import Line from "../components/Line";
 import Constellation from "../components/Constellation";
-import Crowd, { type CrowdState } from "../components/Crowd";
 import AlliesNet from "../components/AlliesNet";
 import Ambient from "../components/Ambient";
 import { useNavigate, Link } from "react-router";
@@ -92,8 +91,7 @@ function Nav() {
             ))}
             <Link to="/eventos" onClick={() => setOpen(false)} className="display border-b border-line py-5 text-[2.25rem] no-underline">Eventos</Link>
           </nav>
-          <div className="mt-10 flex flex-wrap gap-3"><ApplyButton /><Link to="/sponsor" onClick={() => setOpen(false)} className="btn btn-ghost no-underline">Sé sponsor</Link><Link to="/mentor" onClick={() => setOpen(false)} className="btn btn-ghost no-underline">Sé mentor</Link></div>
-          <div className="mt-3"><AccountButton onNavigate={() => setOpen(false)} block /></div>
+          <div className="mt-10"><AccountButton onNavigate={() => setOpen(false)} block /></div>
           <p className="mt-6 text-sm font-bold uppercase tracking-wide text-accent">Cierre: 29 de noviembre, 23:59</p>
         </div>
       )}
@@ -114,7 +112,7 @@ function Hero() {
           <p className="measure halo intro mt-5 text-xl text-ink md:text-[1.375rem]" style={{ ["--id" as string]: "1550ms" }}>
             La liga de ciencia de datos entre universidades e institutos del Perú. Final presencial en la UNI, el 5 de diciembre.
           </p>
-          <div className="intro mt-8 flex flex-wrap items-center gap-3" style={{ ["--id" as string]: "1750ms" }}><ApplyButton /><Link to="/mentor" className="btn btn-ghost no-underline">Sé mentor</Link><Link to="/sponsor" className="btn btn-ghost no-underline">Sé sponsor</Link></div>
+          <div className="intro mt-8 flex flex-wrap items-center gap-3" style={{ ["--id" as string]: "1750ms" }}><div className="hero-apply order-last w-full sm:order-none sm:w-auto"><ApplyButton /></div><Link to="/mentor" className="btn btn-ghost hero-sec no-underline">Sé mentor</Link><Link to="/sponsor" className="btn btn-ghost hero-sec no-underline">Sé sponsor</Link></div>
         </div>
         <Network origin assemble interactive pulses className="map-fade pointer-events-none absolute -right-[10%] top-[10%] -z-10 h-[52%] w-auto md:-right-[3%] md:top-[12%] md:h-[64%] lg:static lg:z-auto lg:col-start-2 lg:row-start-1 lg:h-auto lg:w-[min(100%,calc(min(76svh,780px)*0.7212))] lg:justify-self-center" />
       </div>
@@ -224,33 +222,58 @@ function Requirements() {
   );
 }
 
-function Impact() {
-  const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const [st, setSt] = useState<CrowdState>({ phase: 3, c1: 300, c2: 120, c3: 20 });
-  const onState = useCallback((s: CrowdState) => setSt(s), []);
-  const num = (live: number, final: string) => (
-    <span className="relative inline-block">
-      <span className="invisible" aria-hidden="true">{final}</span>
-      <span className="absolute inset-0" aria-hidden="true">{reduce ? final : `${live}${final.endsWith("+") ? "+" : ""}`}</span>
+/** Cifra que sube de 0 a su meta la primera vez que entra en pantalla. Sin movimiento, muestra la cifra final. */
+function CountUp({ to, suffix = "", delay = 0 }: { to: number; suffix?: string; delay?: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [v, setV] = useState(() => (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? to : 0));
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || v === to) return;
+    let raf = 0, timer = 0;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      timer = window.setTimeout(() => {
+        const t0 = performance.now(), dur = 1400;
+        const tick = (now: number) => {
+          const p = Math.min(1, (now - t0) / dur);
+          setV(Math.round(to * (1 - Math.pow(1 - p, 3))));
+          if (p < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+      }, delay);
+    }, { threshold: 0.6 });
+    io.observe(el);
+    return () => { io.disconnect(); window.clearTimeout(timer); cancelAnimationFrame(raf); };
+  }, [to, delay]);   // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <span ref={ref} className="relative inline-block tabular-nums" aria-hidden="true">
+      <span className="invisible">{to}{suffix}</span>
+      <span className="absolute inset-0 text-center">{v}{suffix}</span>
     </span>
   );
+}
+
+function Impact() {
+  const metas = [
+    { n: 300, suf: "+", t: "jóvenes", color: "text-accent" },
+    { n: 120, suf: "", t: "en la final", color: "text-ink" },
+    { n: 20, suf: "+", t: "comunidades", color: "text-primary-text" },
+  ];
   return (
-    <section data-sec data-stage data-ambient="off" data-phase={st.phase} className="impact relative border-t border-line md:h-[360svh] h-[320svh]" aria-labelledby="h-impacto">
+    <section data-sec data-ambient="off" className="relative border-t border-line" aria-labelledby="h-impacto">
       <span data-node aria-hidden="true" className="absolute left-0 top-28 text-[2rem]" />
-      <div className="sticky top-0 flex h-svh flex-col overflow-hidden md:flex-row">
-        <div className="relative z-10 flex flex-none flex-col justify-center px-7 pb-2 pt-20 md:w-[46%] md:max-w-[640px] md:py-0 md:pl-14 md:pr-0">
-          <h2 id="h-impacto" className="display leading-[0.86]" aria-label="Las metas: 300 o más jóvenes, 120 en la final y 20 o más comunidades">
-            <span className="m1 block"><span className="text-[clamp(3rem,10vw,7.5rem)] text-accent">{num(st.c1, "300+")}</span> <span className="text-[clamp(1.1rem,3vw,2.25rem)]">jóvenes</span></span>
-            <span className="m2 mt-2 block md:mt-3"><span className="text-[clamp(2.5rem,8vw,5.75rem)]">{num(st.c2, "120")}</span> <span className="text-[clamp(1.1rem,3vw,2.25rem)]">en la final</span></span>
-            <span className="m3 mt-2 block md:mt-3"><span className="text-[clamp(2rem,6vw,4.25rem)] text-primary-text">{num(st.c3, "20+")}</span> <span className="text-[clamp(1.1rem,3vw,2.25rem)]">comunidades</span></span>
-          </h2>
-          <p className="impact-cap mt-4 max-w-[34ch] text-[1.05rem] text-ink md:mt-8 md:text-xl">
-            {st.phase <= 1 ? "Queremos reunir a más de 300 jóvenes de todo el país." : st.phase === 2 ? "120 de ellos llegarán a la final presencial en la UNI." : "Y cada comunidad enviará a sus finalistas. Metas de la edición 2026."}
-          </p>
-        </div>
-        <div className="relative min-h-0 flex-1 md:pr-6">
-          <Crowd onState={onState} />
-        </div>
+      <div className="wrap py-24 text-center md:py-40">
+        <h2 id="h-impacto" className="text-[0.8rem] font-black uppercase tracking-[0.16em] text-muted" aria-label="Las metas de la edición 2026: 300 o más jóvenes, 120 en la final y 20 o más comunidades">Las metas de la edición 2026</h2>
+        <ul className="mt-10 grid gap-10 md:mt-16 md:grid-cols-3 md:gap-0">
+          {metas.map((m, i) => (
+            <li key={m.t} className={`flex flex-col items-center ${i > 0 ? "md:border-l md:border-line" : ""}`}>
+              <span className={`display leading-[0.9] text-[clamp(4.5rem,22vw,6.5rem)] md:text-[clamp(4rem,9vw,9rem)] ${m.color}`}><CountUp to={m.n} suffix={m.suf} delay={i * 250} /></span>
+              <span className="display mt-3 text-[clamp(1.1rem,3vw,2rem)]">{m.t}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mx-auto mt-12 max-w-[34ch] text-[1.05rem] text-ink md:mt-20 md:text-xl">120 de ellos llegarán a la final presencial en la UNI. Cada comunidad enviará a sus finalistas.</p>
       </div>
     </section>
   );
@@ -341,17 +364,17 @@ function Footer() {
         </div>
         <nav aria-label="Pie de página" className="md:col-span-3">
           <p className="foot-h">Explora</p>
-          <ul className="mt-4 space-y-2.5 text-[0.95rem]">
-            {NAV.map(([h, t]) => <li key={h}><a href={h} className="text-soft no-underline hover:text-accent">{t}</a></li>)}
-            <li><Link to="/eventos" className="text-soft no-underline hover:text-accent">Eventos</Link></li>
+          <ul className="mt-3 text-[0.95rem]">
+            {NAV.map(([h, t]) => <li key={h}><a href={h} className="inline-block py-2 text-soft no-underline hover:text-accent">{t}</a></li>)}
+            <li><Link to="/eventos" className="inline-block py-2 text-soft no-underline hover:text-accent">Eventos</Link></li>
           </ul>
         </nav>
         <div className="md:col-span-3">
           <p className="foot-h">Participa</p>
-          <ul className="mt-4 space-y-2.5 text-[0.95rem]">
-            <li><Link to="/postular" className="text-soft no-underline hover:text-accent">Postula tu equipo</Link></li>
-            <li><Link to="/mentor" className="text-soft no-underline hover:text-accent">Sé mentor</Link></li>
-            <li><Link to="/sponsor" className="text-soft no-underline hover:text-accent">Sé sponsor</Link></li>
+          <ul className="mt-3 text-[0.95rem]">
+            <li><Link to="/postular" className="inline-block py-2 text-soft no-underline hover:text-accent">Postula tu equipo</Link></li>
+            <li><Link to="/mentor" className="inline-block py-2 text-soft no-underline hover:text-accent">Sé mentor</Link></li>
+            <li><Link to="/sponsor" className="inline-block py-2 text-soft no-underline hover:text-accent">Sé sponsor</Link></li>
           </ul>
           <p className="mt-6 text-[0.9rem] text-soft">Cierre: 29 de noviembre, 23:59</p>
         </div>

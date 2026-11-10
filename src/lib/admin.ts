@@ -3,7 +3,7 @@ import type { Timestamp } from "firebase/firestore";
 export type Miembro = { nombre: string; correo: string; whatsapp: string };
 export type Post = {
   id: string; edicion: string; uid: string; modo: "equipo" | "individual"; estado: string;
-  nombre: string; correo: string; whatsapp: string; integrantes?: Miembro[];
+  nombre: string; correo: string; whatsapp: string; nombreEquipo?: string; integrantes?: Miembro[];
   creadoEn?: Timestamp; actualizadoEn?: Timestamp;
   correoEstado?: string; correoEnviadoEn?: Timestamp;
 };
@@ -32,24 +32,26 @@ export const estadoTexto = (v: string) => [...ESTADOS, ...OTROS].find((e) => e.v
 
 export const fecha = (t?: Timestamp) => (t ? t.toDate().toLocaleString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
 
-/** CSV con BOM y separador de comas: se abre bien en Excel con acentos. */
-export function descargarCsv(nombre: string, filas: (string | number)[][]) {
-  const esc = (v: string | number) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const csv = "﻿" + filas.map((f) => f.map(esc).join(",")).join("\r\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  const a = document.createElement("a");
-  a.href = url; a.download = nombre; a.click();
-  URL.revokeObjectURL(url);
+/** Excel (.xlsx): primera fila en negrita y columnas con ancho según el contenido. La librería se carga solo al exportar. */
+export async function descargarXlsx(nombre: string, filas: (string | number)[][], hoja = "Datos") {
+  const { default: writeXlsxFile } = await import("write-excel-file/browser");
+  const [cab, ...resto] = filas;
+  const data = [
+    cab.map((v) => ({ value: String(v), fontWeight: "bold" as const })),
+    ...resto.map((f) => f.map((v) => (v === "" ? null : v))),
+  ];
+  const columns = cab.map((_, i) => ({ width: Math.min(40, Math.max(10, ...filas.map((f) => String(f[i] ?? "").length)) + 2) }));
+  await writeXlsxFile(data, { columns, sheet: hoja }).toFile(nombre);
 }
 
 /** Una fila por persona: quien lidera (o postula solo) y cada integrante. */
 export function filasPersonas(posts: Post[]): (string | number)[][] {
-  const out: (string | number)[][] = [["Rol", "Nombre", "Correo", "WhatsApp", "Modo", "Equipo de", "Estado", "Fecha de registro"]];
+  const out: (string | number)[][] = [["Rol", "Nombre", "Correo", "WhatsApp", "Modo", "Nombre del equipo", "Equipo de", "Estado", "Fecha de registro"]];
   for (const p of posts) {
     const n = 1 + (p.integrantes?.length ?? 0);
     const fecha = p.creadoEn ? p.creadoEn.toDate().toISOString() : "";
-    out.push([p.modo === "equipo" ? "Líder" : "Individual", p.nombre, p.correo, p.whatsapp, p.modo, n, estadoTexto(p.estado), fecha]);
-    (p.integrantes ?? []).forEach((m) => out.push(["Integrante", m.nombre, m.correo, m.whatsapp, p.modo, n, estadoTexto(p.estado), ""]));
+    out.push([p.modo === "equipo" ? "Líder" : "Individual", p.nombre, p.correo, p.whatsapp, p.modo, p.nombreEquipo ?? "", n, estadoTexto(p.estado), fecha]);
+    (p.integrantes ?? []).forEach((m) => out.push(["Integrante", m.nombre, m.correo, m.whatsapp, p.modo, p.nombreEquipo ?? "", n, estadoTexto(p.estado), ""]));
   }
   return out;
 }

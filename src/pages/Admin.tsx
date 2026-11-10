@@ -4,7 +4,7 @@ import Shell from "../components/Shell";
 import { useAuth } from "../lib/auth";
 import { db, firebaseConfigured } from "../lib/firebase";
 import { ADMIN_EMAIL, EDICION, eventos } from "../config";
-import { ESTADOS, ESTADOS_MENTOR, ESTADOS_SPONSOR, descargarCsv, estadoTexto, fecha, filasPersonas, type Post, type MentorDoc, type SponsorDoc } from "../lib/admin";
+import { ESTADOS, ESTADOS_MENTOR, ESTADOS_SPONSOR, descargarXlsx, estadoTexto, fecha, filasPersonas, type Post, type MentorDoc, type SponsorDoc } from "../lib/admin";
 import { correoConfigurado, enviarCorreoEstado, tieneCorreo } from "../lib/correo";
 import { tiposApoyo } from "../lib/sponsor";
 import { areasMentor } from "../lib/mentor";
@@ -95,6 +95,7 @@ function Ficha({ p, onClose, onCambiar }: { p: Post; onClose: () => void; onCamb
       <div className="ficha-box">
         <button type="button" className="auth-x" aria-label="Cerrar" onClick={onClose}>×</button>
         <h2 id="ficha-t" className="title text-3xl">{p.nombre}</h2>
+        {p.modo === "equipo" && <p className="mt-2 text-xl font-bold text-accent">{p.nombreEquipo || "Equipo sin nombre"}</p>}
         <p className="mt-1 text-muted">{p.modo === "equipo" ? `Equipo de ${1 + (p.integrantes?.length ?? 0)} personas` : "Postulación individual"} · registrada {fecha(p.creadoEn)}</p>
         <div className="mt-6 grid gap-2">
           <label htmlFor="estado-sel" className="font-bold text-ink">Estado</label>
@@ -105,6 +106,7 @@ function Ficha({ p, onClose, onCambiar }: { p: Post; onClose: () => void; onCamb
           {p.correoEstado && <p className="text-[0.9rem] text-muted">Último correo: «{estadoTexto(p.correoEstado)}», {fecha(p.correoEnviadoEn)}.</p>}
         </div>
         <dl className="summary mt-6">
+          {p.modo === "equipo" && row("Nombre del equipo", p.nombreEquipo)}
           {row("Correo", p.correo)}
           {row("WhatsApp", p.whatsapp)}
           {(p.integrantes ?? []).map((m, i) => row(`Integrante ${i + 1}`, `${m.nombre} · ${m.correo} · ${m.whatsapp}`))}
@@ -124,7 +126,6 @@ function Postulaciones({ posts }: { posts: Post[] }) {
   const [q, setQ] = useState("");
   const [fModo, setFModo] = useState("");
   const [fEstado, setFEstado] = useState("");
-  const [sel, setSel] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<Post | null>(null);
   const [msg, setMsg] = useState("");
   const [cambio, setCambio] = useState<{ items: Post[]; nuevo: string } | null>(null);
@@ -135,21 +136,25 @@ function Postulaciones({ posts }: { posts: Post[] }) {
       if (fModo && p.modo !== fModo) return false;
       if (fEstado && p.estado !== fEstado) return false;
       if (!t) return true;
-      const hay = [p.nombre, p.correo, p.whatsapp, ...(p.integrantes ?? []).flatMap((m) => [m.nombre, m.correo, m.whatsapp])].join(" ").toLowerCase();
+      const hay = [p.nombre, p.nombreEquipo ?? "", p.correo, p.whatsapp, ...(p.integrantes ?? []).flatMap((m) => [m.nombre, m.correo, m.whatsapp])].join(" ").toLowerCase();
       return hay.includes(t);
     });
   }, [posts, q, fModo, fEstado]);
 
   const personas = posts.reduce((n, p) => n + 1 + (p.integrantes?.length ?? 0), 0);
   const equipos = posts.filter((p) => p.modo === "equipo").length;
-  const todosSel = lista.length > 0 && lista.every((p) => sel.has(p.id));
   const openFresh = open ? posts.find((p) => p.id === open.id) ?? open : null;
 
-  async function copiarWhatsapp() {
-    const ps = lista.filter((p) => !sel.size || sel.has(p.id));
-    const nums = ps.flatMap((p) => [p.whatsapp, ...(p.integrantes ?? []).map((m) => m.whatsapp)]);
-    await navigator.clipboard.writeText(nums.join("\n"));
-    setMsg(`${nums.length} números copiados.`);
+  /** Los estados que avisan por correo abren la ventana de confirmación; «Pendiente» se guarda directo. */
+  function cambiarEstado(p: Post, nuevo: string) {
+    if (!nuevo || nuevo === p.estado) return;
+    if (tieneCorreo(nuevo)) setCambio({ items: [p], nuevo });
+    else if (db) void updateDoc(doc(db, "postulaciones", p.id), { estado: nuevo, actualizadoEn: serverTimestamp() }).catch(() => setMsg("No se pudo cambiar el estado."));
+  }
+
+  async function exportar() {
+    try { await descargarXlsx(`postulaciones-${EDICION}.xlsx`, filasPersonas(lista), "Postulaciones"); }
+    catch { setMsg("No se pudo generar el archivo Excel."); }
   }
 
   return (
@@ -160,37 +165,40 @@ function Postulaciones({ posts }: { posts: Post[] }) {
         <div><b>{equipos}</b><span>equipos</span></div>
         <div><b>{posts.length - equipos}</b><span>individuales</span></div>
         <div><b>{posts.filter((p) => p.estado === "registrada").length}</b><span>pendientes</span></div>
+        <button type="button" className="btn btn-ghost adm-btn ml-auto self-center" onClick={() => void exportar()}>Exportar XLSX</button>
       </div>
 
       <div className="adm-bar">
-        <input className="adm-input" type="search" placeholder="Buscar por nombre, correo o celular" aria-label="Buscar" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select className="adm-input" aria-label="Filtrar por modo" value={fModo} onChange={(e) => setFModo(e.target.value)}><option value="">Equipo e individual</option><option value="equipo">Equipo</option><option value="individual">Individual</option></select>
+        <input className="adm-input" type="search" placeholder="Buscar por nombre, equipo, correo o celular" aria-label="Buscar" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="adm-seg" role="group" aria-label="Filtrar por modo">
+          <button type="button" aria-pressed={fModo === ""} className={`btn adm-btn${fModo === "" ? "" : " btn-ghost"}`} onClick={() => setFModo("")}>Todos ({posts.length})</button>
+          <button type="button" aria-pressed={fModo === "equipo"} className={`btn adm-btn${fModo === "equipo" ? "" : " btn-ghost"}`} onClick={() => setFModo("equipo")}>Equipo ({equipos})</button>
+          <button type="button" aria-pressed={fModo === "individual"} className={`btn adm-btn${fModo === "individual" ? "" : " btn-ghost"}`} onClick={() => setFModo("individual")}>Individual ({posts.length - equipos})</button>
+        </div>
         <select className="adm-input" aria-label="Filtrar por estado" value={fEstado} onChange={(e) => setFEstado(e.target.value)}><option value="">Todos los estados</option>{ESTADOS.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}<option value="retirada">Retirada</option></select>
-      </div>
-      <div className="adm-bar">
-        <span className="text-soft">{lista.length} de {posts.length} · {sel.size} seleccionada(s)</span>
-        <select className="adm-input" aria-label="Cambiar estado de la selección" value="" disabled={!sel.size} onChange={(e) => { if (e.target.value) setCambio({ items: posts.filter((p) => sel.has(p.id)), nuevo: e.target.value }); }}><option value="">Cambiar estado de la selección…</option>{ESTADOS.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}</select>
-        <button type="button" className="btn btn-ghost adm-btn" onClick={() => descargarCsv(`postulaciones-${EDICION}.csv`, filasPersonas(lista))}>Exportar CSV</button>
-        <button type="button" className="btn btn-ghost adm-btn" onClick={() => void copiarWhatsapp()}>Copiar WhatsApp</button>
       </div>
       {msg && <p role="status" className="mb-3 text-ink">{msg}</p>}
 
       <div className="adm-scroll">
         <table className="adm-table">
           <thead><tr>
-            <th><input type="checkbox" aria-label="Seleccionar todas" checked={todosSel} onChange={() => setSel(todosSel ? new Set() : new Set(lista.map((p) => p.id)))} /></th>
-            <th>Nombre</th><th>Correo</th><th>Celular</th><th>Equipo</th><th>Estado</th><th>Registro</th>
+            <th>Nombre del equipo</th><th>Nombre del líder</th><th>Correo</th><th>Celular</th><th>Estado</th><th>Registro</th><th>Info</th>
           </tr></thead>
           <tbody>
             {lista.map((p) => (
-              <tr key={p.id} className={sel.has(p.id) ? "sel" : ""}>
-                <td><input type="checkbox" aria-label={`Seleccionar a ${p.nombre}`} checked={sel.has(p.id)} onChange={() => setSel((s) => { const n = new Set(s); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })} /></td>
+              <tr key={p.id}>
+                <td>{p.modo === "equipo" ? <><b className="text-ink">{p.nombreEquipo || "Equipo sin nombre"}</b><br /><span className="text-muted">{1 + (p.integrantes?.length ?? 0)} personas</span></> : <span className="text-muted">Individual</span>}</td>
                 <td><button type="button" className="link-btn" onClick={() => setOpen(p)}>{p.nombre}</button></td>
                 <td>{p.correo}</td>
                 <td>{p.whatsapp}</td>
-                <td>{p.modo === "equipo" ? `Equipo (${1 + (p.integrantes?.length ?? 0)})` : "Individual"}</td>
-                <td><span className={`pill e-${p.estado}`}>{estadoTexto(p.estado)}</span></td>
+                <td>
+                  <select className={`adm-input pill-select e-${p.estado}`} aria-label={`Estado de ${p.nombreEquipo || p.nombre}`} value={ESTADOS.some((e) => e.v === p.estado) ? p.estado : ""} onChange={(e) => cambiarEstado(p, e.target.value)}>
+                    {!ESTADOS.some((e) => e.v === p.estado) && <option value="">{estadoTexto(p.estado)}</option>}
+                    {ESTADOS.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}
+                  </select>
+                </td>
                 <td>{fecha(p.creadoEn)}</td>
+                <td><button type="button" className="btn btn-ghost adm-btn" aria-label={`Ver info de ${p.nombreEquipo || p.nombre}`} onClick={() => setOpen(p)}>Info</button></td>
               </tr>
             ))}
             {!lista.length && <tr><td colSpan={7} className="py-8 text-center text-soft">{posts.length ? "Ninguna postulación coincide con los filtros." : "Todavía no hay postulaciones."}</td></tr>}
@@ -198,7 +206,7 @@ function Postulaciones({ posts }: { posts: Post[] }) {
         </table>
       </div>
       {openFresh && !cambio && <Ficha p={openFresh} onClose={() => setOpen(null)} onCambiar={(nuevo) => setCambio({ items: [openFresh], nuevo })} />}
-      {cambio && <CambioEstado items={cambio.items} nuevo={cambio.nuevo} onClose={() => setCambio(null)} onDone={(m) => { setMsg(m); setSel(new Set()); setOpen(null); }} />}
+      {cambio && <CambioEstado items={cambio.items} nuevo={cambio.nuevo} onClose={() => setCambio(null)} onDone={(m) => { setMsg(m); setOpen(null); }} />}
     </div>
   );
 }
@@ -207,13 +215,13 @@ function Postulaciones({ posts }: { posts: Post[] }) {
 function Sponsors({ items }: { items: SponsorDoc[] }) {
   async function estado(id: string, v: string) { if (db) await updateDoc(doc(db, "sponsors", id), { estado: v }); }
   const tipo = (v: string) => tiposApoyo.find((t) => t.v === v)?.t ?? v;
-  function exportar() {
-    descargarCsv(`sponsors-${EDICION}.csv`, [["Organización", "Contacto", "Cargo", "Correo", "Teléfono", "Apoyo", "Mensaje", "Estado", "Fecha"],
-      ...items.map((s) => [s.organizacion, s.contacto, s.cargo, s.correo, s.telefono, s.tipoApoyo.map(tipo).join(" / "), s.mensaje, s.estado, s.creadoEn ? s.creadoEn.toDate().toISOString() : ""])]);
+  async function exportar() {
+    await descargarXlsx(`sponsors-${EDICION}.xlsx`, [["Organización", "Contacto", "Cargo", "Correo", "Teléfono", "Apoyo", "Mensaje", "Estado", "Fecha"],
+      ...items.map((s) => [s.organizacion, s.contacto, s.cargo, s.correo, s.telefono, s.tipoApoyo.map(tipo).join(" / "), s.mensaje, s.estado, s.creadoEn ? s.creadoEn.toDate().toISOString() : ""])], "Sponsors");
   }
   return (
     <div>
-      <div className="adm-bar"><span className="text-soft">{items.length} solicitud(es)</span><button type="button" className="btn btn-ghost adm-btn" onClick={exportar}>Exportar CSV</button></div>
+      <div className="adm-bar"><span className="text-soft">{items.length} solicitud(es)</span><button type="button" className="btn btn-ghost adm-btn" onClick={() => void exportar()}>Exportar XLSX</button></div>
       <div className="adm-scroll">
         <table className="adm-table">
           <thead><tr><th>Organización</th><th>Contacto</th><th>Correo</th><th>Apoyo</th><th>Mensaje</th><th>Estado</th><th>Fecha</th></tr></thead>
@@ -241,13 +249,13 @@ function Sponsors({ items }: { items: SponsorDoc[] }) {
 function Mentores({ items }: { items: MentorDoc[] }) {
   async function estado(id: string, v: string) { if (db) await updateDoc(doc(db, "mentores", id), { estado: v }); }
   const area = (v: string) => areasMentor.find((t) => t.v === v)?.t ?? v;
-  function exportar() {
-    descargarCsv(`mentores-${EDICION}.csv`, [["Nombre", "Correo", "Teléfono", "Ocupación", "Perfil", "Áreas", "Mensaje", "Estado", "Fecha"],
-      ...items.map((m) => [m.nombre, m.correo, m.telefono, m.ocupacion, m.perfil, m.areas.map(area).join(" / "), m.mensaje, m.estado, m.creadoEn ? m.creadoEn.toDate().toISOString() : ""])]);
+  async function exportar() {
+    await descargarXlsx(`mentores-${EDICION}.xlsx`, [["Nombre", "Correo", "Teléfono", "Ocupación", "Perfil", "Áreas", "Mensaje", "Estado", "Fecha"],
+      ...items.map((m) => [m.nombre, m.correo, m.telefono, m.ocupacion, m.perfil, m.areas.map(area).join(" / "), m.mensaje, m.estado, m.creadoEn ? m.creadoEn.toDate().toISOString() : ""])], "Mentores");
   }
   return (
     <div>
-      <div className="adm-bar"><span className="text-soft">{items.length} postulación(es)</span><button type="button" className="btn btn-ghost adm-btn" onClick={exportar}>Exportar CSV</button></div>
+      <div className="adm-bar"><span className="text-soft">{items.length} postulación(es)</span><button type="button" className="btn btn-ghost adm-btn" onClick={() => void exportar()}>Exportar XLSX</button></div>
       <div className="adm-scroll">
         <table className="adm-table">
           <thead><tr><th>Nombre</th><th>Ocupación</th><th>Correo</th><th>Áreas</th><th>Mensaje</th><th>Estado</th><th>Fecha</th></tr></thead>
@@ -276,8 +284,8 @@ function Jornadas({ items }: { items: Inscripcion[] }) {
   const [ev, setEv] = useState(eventos[0]?.id ?? "");
   const lista = items.filter((i) => i.evento === ev);
   const nombreEv = (id: string) => eventos.find((e) => e.id === id)?.tema ?? id;
-  function exportar() {
-    descargarCsv(`inscritos-${ev}.csv`, [["Jornada", "Nombre", "Correo", "Fecha de inscripción"], ...lista.map((i) => [nombreEv(i.evento), i.nombre, i.correo, i.creadoEn ? i.creadoEn.toDate().toISOString() : ""])]);
+  async function exportar() {
+    await descargarXlsx(`inscritos-${ev}.xlsx`, [["Jornada", "Nombre", "Correo", "Fecha de inscripción"], ...lista.map((i) => [nombreEv(i.evento), i.nombre, i.correo, i.creadoEn ? i.creadoEn.toDate().toISOString() : ""])], "Inscritos");
   }
   return (
     <div>
@@ -287,7 +295,7 @@ function Jornadas({ items }: { items: Inscripcion[] }) {
       <div className="adm-bar">
         <select className="adm-input" aria-label="Jornada" value={ev} onChange={(e) => setEv(e.target.value)}>{eventos.map((e) => <option key={e.id} value={e.id}>{e.dia} {e.mes} · {e.tema}</option>)}</select>
         <span className="text-soft">{lista.length} inscrito(s)</span>
-        <button type="button" className="btn btn-ghost adm-btn" onClick={exportar}>Exportar CSV</button>
+        <button type="button" className="btn btn-ghost adm-btn" onClick={() => void exportar()}>Exportar XLSX</button>
         <button type="button" className="btn btn-ghost adm-btn" onClick={() => void navigator.clipboard.writeText(lista.map((i) => i.correo).join(", "))}>Copiar correos</button>
       </div>
       <div className="adm-scroll">
@@ -361,7 +369,7 @@ export default function Admin() {
     <>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <h1 className="title h-lg">Panel de administración</h1>
-        <button type="button" className="link-btn" onClick={() => void signOut()}>Cerrar sesión</button>
+        <button type="button" className="link-btn link-danger" onClick={() => void signOut()}>Cerrar sesión</button>
       </div>
       <div className="adm-tabs" role="tablist" aria-label="Secciones">
         <button role="tab" aria-selected={tab === "post"} onClick={() => setTab("post")}>Postulaciones ({posts.length})</button>
@@ -374,5 +382,5 @@ export default function Admin() {
     </>
   );
 
-  return <Shell><div className="wrap py-10 md:py-14">{body}</div></Shell>;
+  return <Shell volver={false}><div className="wrap py-10 md:py-14">{body}</div></Shell>;
 }

@@ -19,7 +19,7 @@ export default function Cuenta() {
 
   useEffect(() => {
     if (!user || !db) return;
-    getDoc(doc(db, "postulaciones", user.uid)).then((s) => setEstado(s.exists() ? (s.data().estado as string) : null)).catch(() => setEstado(null));
+    getDoc(doc(db, "postulaciones", user.uid)).then((s) => setEstado(s.exists() && s.data().estado !== "retirada" ? (s.data().estado as string) : null)).catch(() => setEstado(null));
   }, [user]);
 
   const mias = eventos.filter((e) => ids.has(e.id));
@@ -40,12 +40,12 @@ export default function Cuenta() {
           <>
             <header className="acc-head">
               <span className="acc-avatar" aria-hidden="true">{iniciales(nombreDe(user))}</span>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <p className="acc-kicker">Mi cuenta</p>
-                <h1 className="title text-[clamp(1.6rem,4vw,2.4rem)]">{nombreDe(user)}</h1>
-                <p className="mt-1 truncate text-soft">{user.email}</p>
+                <h1 className="title break-words text-[clamp(1.6rem,4vw,2.4rem)]">{nombreDe(user)}</h1>
+                <p className="mt-1 break-all text-soft">{user.email}</p>
               </div>
-              <button type="button" className="btn btn-ghost acc-out" onClick={() => void signOut().then(() => navigate("/"))}>Cerrar sesión</button>
+              <button type="button" className="btn btn-ghost btn-danger acc-out" onClick={() => void signOut().then(() => navigate("/"))}>Cerrar sesión</button>
             </header>
 
             <div className="acc-grid">

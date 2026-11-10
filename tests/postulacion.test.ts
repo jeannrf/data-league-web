@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { normalizarCelular, postulacionSchema, crossIssues } from "../src/lib/validacion.ts";
 
-const base = { correoLider: "lider@uni.pe", nombre: "Ana Pérez", celular: "987654321", integrantes: [], acepta: true as const };
+const base = { correoLider: "lider@uni.pe", nombre: "Ana Pérez", celular: "987654321", nombreEquipo: "Los Datos", integrantes: [], acepta: true as const };
 const ok = (v: object) => postulacionSchema.safeParse({ ...base, ...v });
 const msgs = (v: object) => { const r = ok(v); return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`); };
 const bien = { nombre: "Luis Gómez", celular: "912345678", correo: "luis@uni.pe" };
@@ -47,4 +47,11 @@ test("repetidos: correo del líder (mayúsculas), entre integrantes, nombre y ce
 });
 test("dos integrantes con mismo celular no se bloquean (solo se compara con el líder)", () => {
   assert.equal(crossIssues({ ...base, integrantes: [bien, { nombre: "Z", celular: bien.celular, correo: "z@uni.pe" }] }).length, 0);
+});
+test("un equipo necesita nombre; una postulación individual no", () => {
+  assert.ok(msgs({ integrantes: [bien], nombreEquipo: undefined }).some((m) => m.startsWith("nombreEquipo")));
+  assert.ok(msgs({ integrantes: [bien], nombreEquipo: "   " }).some((m) => m.startsWith("nombreEquipo")));
+  assert.equal(ok({ integrantes: [bien], nombreEquipo: "Los Datos" }).success, true);
+  assert.ok(msgs({ integrantes: [bien], nombreEquipo: "a".repeat(61) }).some((m) => m.startsWith("nombreEquipo")));
+  assert.equal(ok({}).success, true);
 });
