@@ -5,6 +5,7 @@ import Landing from "./pages/Landing";
 import Postular from "./pages/Postular";
 import MiPostulacion from "./pages/MiPostulacion";
 import Sponsor from "./pages/Sponsor";
+import Mentor from "./pages/Mentor";
 import Admin from "./pages/Admin";
 import Eventos from "./pages/Eventos";
 import Cuenta from "./pages/Cuenta";
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/postular" element={<Postular />} />
           <Route path="/mi-postulacion" element={<MiPostulacion />} />
           <Route path="/sponsor" element={<Sponsor />} />
+          <Route path="/mentor" element={<Mentor />} />
           <Route path="/eventos" element={<Eventos />} />
           <Route path="/cuenta" element={<Cuenta />} />
           <Route path="/admin" element={<Admin />} />

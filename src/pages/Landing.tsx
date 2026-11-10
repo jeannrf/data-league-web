@@ -92,7 +92,7 @@ function Nav() {
             ))}
             <Link to="/eventos" onClick={() => setOpen(false)} className="display border-b border-line py-5 text-[2.25rem] no-underline">Eventos</Link>
           </nav>
-          <div className="mt-10 flex flex-wrap gap-3"><ApplyButton /><Link to="/sponsor" onClick={() => setOpen(false)} className="btn btn-ghost no-underline">Sé sponsor</Link></div>
+          <div className="mt-10 flex flex-wrap gap-3"><ApplyButton /><Link to="/sponsor" onClick={() => setOpen(false)} className="btn btn-ghost no-underline">Sé sponsor</Link><Link to="/mentor" onClick={() => setOpen(false)} className="btn btn-ghost no-underline">Sé mentor</Link></div>
           <div className="mt-3"><AccountButton onNavigate={() => setOpen(false)} block /></div>
           <p className="mt-6 text-sm font-bold uppercase tracking-wide text-accent">Cierre: 29 de noviembre, 23:59</p>
         </div>
@@ -114,7 +114,7 @@ function Hero() {
           <p className="measure halo intro mt-5 text-xl text-ink md:text-[1.375rem]" style={{ ["--id" as string]: "1550ms" }}>
             La liga de ciencia de datos entre universidades e institutos del Perú. Final presencial en la UNI, el 5 de diciembre.
           </p>
-          <div className="intro mt-8 flex flex-wrap items-center gap-3" style={{ ["--id" as string]: "1750ms" }}><ApplyButton /><Link to="/sponsor" className="btn btn-ghost no-underline">Sé sponsor</Link></div>
+          <div className="intro mt-8 flex flex-wrap items-center gap-3" style={{ ["--id" as string]: "1750ms" }}><ApplyButton /><Link to="/mentor" className="btn btn-ghost no-underline">Sé mentor</Link><Link to="/sponsor" className="btn btn-ghost no-underline">Sé sponsor</Link></div>
         </div>
         <Network origin assemble interactive pulses className="map-fade pointer-events-none absolute -right-[10%] top-[10%] -z-10 h-[52%] w-auto md:-right-[3%] md:top-[12%] md:h-[64%] lg:static lg:z-auto lg:col-start-2 lg:row-start-1 lg:h-auto lg:w-[min(100%,calc(min(76svh,780px)*0.7212))] lg:justify-self-center" />
       </div>
@@ -282,6 +282,21 @@ function Allies() {
   );
 }
 
+function Mentors() {
+  return (
+    <section id="mentores" data-sec className="border-t border-line" aria-labelledby="h-mentores">
+      <div className="wrap grid gap-10 py-24 md:grid-cols-12 md:py-40">
+        <h2 id="h-mentores" data-node className="title h-xl md:col-span-7">Sé mentor de Data League</h2>
+        <div className="md:col-span-5 md:pt-3">
+          <p className="measure text-[1.375rem] font-bold leading-tight text-ink">¿Trabajas o investigas con datos? Acompaña a los equipos mientras desarrollan su desafío.</p>
+          <p className="measure mt-5">Cuéntanos en qué áreas puedes guiar a estudiantes de todo el Perú. El equipo organizador te escribirá para conversarlo.</p>
+          <Link to="/mentor" className="btn mt-8 no-underline">Postular como mentor</Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Sponsors() {
   return (
     <section id="sponsors" data-sec className="border-t border-line" aria-labelledby="h-sponsors">
@@ -335,6 +350,7 @@ function Footer() {
           <p className="foot-h">Participa</p>
           <ul className="mt-4 space-y-2.5 text-[0.95rem]">
             <li><Link to="/postular" className="text-soft no-underline hover:text-accent">Postula tu equipo</Link></li>
+            <li><Link to="/mentor" className="text-soft no-underline hover:text-accent">Sé mentor</Link></li>
             <li><Link to="/sponsor" className="text-soft no-underline hover:text-accent">Sé sponsor</Link></li>
           </ul>
           <p className="mt-6 text-[0.9rem] text-soft">Cierre: 29 de noviembre, 23:59</p>
@@ -366,6 +382,7 @@ export default function Landing() {
         <Impact />
         <Prizes />
         <Allies />
+        <Mentors />
         <Sponsors />
         <Faq />
       </main>

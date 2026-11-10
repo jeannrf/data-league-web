@@ -4,9 +4,10 @@ import Shell from "../components/Shell";
 import { useAuth } from "../lib/auth";
 import { db, firebaseConfigured } from "../lib/firebase";
 import { ADMIN_EMAIL, EDICION, eventos } from "../config";
-import { ESTADOS, ESTADOS_SPONSOR, descargarCsv, estadoTexto, fecha, filasPersonas, type Post, type SponsorDoc } from "../lib/admin";
+import { ESTADOS, ESTADOS_MENTOR, ESTADOS_SPONSOR, descargarCsv, estadoTexto, fecha, filasPersonas, type Post, type MentorDoc, type SponsorDoc } from "../lib/admin";
 import { correoConfigurado, enviarCorreoEstado, tieneCorreo } from "../lib/correo";
 import { tiposApoyo } from "../lib/sponsor";
+import { areasMentor } from "../lib/mentor";
 import type { Inscripcion } from "../lib/eventos";
 
 /* ---------- cambio de estado (con correo opcional) ---------- */
@@ -236,6 +237,40 @@ function Sponsors({ items }: { items: SponsorDoc[] }) {
   );
 }
 
+/* ---------- mentores ---------- */
+function Mentores({ items }: { items: MentorDoc[] }) {
+  async function estado(id: string, v: string) { if (db) await updateDoc(doc(db, "mentores", id), { estado: v }); }
+  const area = (v: string) => areasMentor.find((t) => t.v === v)?.t ?? v;
+  function exportar() {
+    descargarCsv(`mentores-${EDICION}.csv`, [["Nombre", "Correo", "Teléfono", "Ocupación", "Perfil", "Áreas", "Mensaje", "Estado", "Fecha"],
+      ...items.map((m) => [m.nombre, m.correo, m.telefono, m.ocupacion, m.perfil, m.areas.map(area).join(" / "), m.mensaje, m.estado, m.creadoEn ? m.creadoEn.toDate().toISOString() : ""])]);
+  }
+  return (
+    <div>
+      <div className="adm-bar"><span className="text-soft">{items.length} postulación(es)</span><button type="button" className="btn btn-ghost adm-btn" onClick={exportar}>Exportar CSV</button></div>
+      <div className="adm-scroll">
+        <table className="adm-table">
+          <thead><tr><th>Nombre</th><th>Ocupación</th><th>Correo</th><th>Áreas</th><th>Mensaje</th><th>Estado</th><th>Fecha</th></tr></thead>
+          <tbody>
+            {items.map((m) => (
+              <tr key={m.id}>
+                <td><b>{m.nombre}</b>{m.telefono && <><br /><span className="text-muted">{m.telefono}</span></>}</td>
+                <td>{m.ocupacion}{m.perfil && <><br /><span className="text-muted">{m.perfil}</span></>}</td>
+                <td><a href={`mailto:${m.correo}`}>{m.correo}</a></td>
+                <td>{m.areas.map(area).join(", ")}</td>
+                <td className="adm-msg">{m.mensaje || "—"}</td>
+                <td><select className="adm-input" aria-label={`Estado de ${m.nombre}`} value={m.estado} onChange={(e) => void estado(m.id, e.target.value)}>{ESTADOS_MENTOR.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}</select></td>
+                <td>{fecha(m.creadoEn)}</td>
+              </tr>
+            ))}
+            {!items.length && <tr><td colSpan={7} className="py-8 text-center text-soft">Todavía no hay postulaciones de mentores.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- inscripciones a las jornadas virtuales ---------- */
 function Jornadas({ items }: { items: Inscripcion[] }) {
   const [ev, setEv] = useState(eventos[0]?.id ?? "");
@@ -296,10 +331,11 @@ function Login() {
 /* ---------- página ---------- */
 export default function Admin() {
   const { user, loading, signOut } = useAuth();
-  const [tab, setTab] = useState<"post" | "spon" | "ev">("post");
+  const [tab, setTab] = useState<"post" | "spon" | "men" | "ev">("post");
   const [insc, setInsc] = useState<Inscripcion[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [spons, setSpons] = useState<SponsorDoc[]>([]);
+  const [mentores, setMentores] = useState<MentorDoc[]>([]);
   const [error, setError] = useState("");
   // Esto solo decide qué se muestra; quien protege los datos son las reglas de Firestore.
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -312,7 +348,9 @@ export default function Admin() {
       (s) => setSpons(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SponsorDoc, "id">) }))), () => setError("No se pudieron cargar los sponsors."));
     const u3 = onSnapshot(query(collection(db, "inscripciones"), orderBy("creadoEn", "desc")),
       (s) => setInsc(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Inscripcion, "id">) }))), () => setError("No se pudieron cargar las inscripciones."));
-    return () => { u1(); u2(); u3(); };
+    const u4 = onSnapshot(query(collection(db, "mentores"), orderBy("creadoEn", "desc")),
+      (s) => setMentores(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MentorDoc, "id">) }))), () => setError("No se pudieron cargar los mentores."));
+    return () => { u1(); u2(); u3(); u4(); };
   }, [isAdmin]);
 
   let body;
@@ -328,10 +366,11 @@ export default function Admin() {
       <div className="adm-tabs" role="tablist" aria-label="Secciones">
         <button role="tab" aria-selected={tab === "post"} onClick={() => setTab("post")}>Postulaciones ({posts.length})</button>
         <button role="tab" aria-selected={tab === "spon"} onClick={() => setTab("spon")}>Sponsors ({spons.length})</button>
+        <button role="tab" aria-selected={tab === "men"} onClick={() => setTab("men")}>Mentores ({mentores.length})</button>
         <button role="tab" aria-selected={tab === "ev"} onClick={() => setTab("ev")}>Jornadas ({insc.length})</button>
       </div>
       {error && <p className="err mb-4" role="alert">{error}</p>}
-      <div className="mt-6">{tab === "post" ? <Postulaciones posts={posts} /> : tab === "spon" ? <Sponsors items={spons} /> : <Jornadas items={insc} />}</div>
+      <div className="mt-6">{tab === "post" ? <Postulaciones posts={posts} /> : tab === "spon" ? <Sponsors items={spons} /> : tab === "men" ? <Mentores items={mentores} /> : <Jornadas items={insc} />}</div>
     </>
   );
 

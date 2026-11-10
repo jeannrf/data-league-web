@@ -11,6 +11,10 @@ export type SponsorDoc = {
   id: string; organizacion: string; contacto: string; cargo: string; correo: string; telefono: string;
   tipoApoyo: string[]; mensaje: string; estado: string; creadoEn?: Timestamp;
 };
+export type MentorDoc = {
+  id: string; nombre: string; correo: string; telefono: string; ocupacion: string; perfil: string;
+  areas: string[]; mensaje: string; estado: string; creadoEn?: Timestamp;
+};
 
 /** Estados que elige el administrador. «registrada» es el estado inicial del sistema y se muestra como «Pendiente». */
 export const ESTADOS = [
@@ -19,6 +23,9 @@ export const ESTADOS = [
 /** Se muestra pero no se elige: lo marca la propia persona al retirar su postulación. */
 const OTROS = [{ v: "retirada", t: "Retirada" }, { v: "valida", t: "Aprobada" }, { v: "finalista", t: "Aprobada" }, { v: "no_seleccionada", t: "Rechazada" }] as const;
 export const ESTADOS_SPONSOR = [
+  { v: "nuevo", t: "Nuevo" }, { v: "contactado", t: "Contactado" }, { v: "confirmado", t: "Confirmado" }, { v: "descartado", t: "Descartado" },
+] as const;
+export const ESTADOS_MENTOR = [
   { v: "nuevo", t: "Nuevo" }, { v: "contactado", t: "Contactado" }, { v: "confirmado", t: "Confirmado" }, { v: "descartado", t: "Descartado" },
 ] as const;
 export const estadoTexto = (v: string) => [...ESTADOS, ...OTROS].find((e) => e.v === v)?.t ?? v;

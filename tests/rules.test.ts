@@ -128,6 +128,27 @@ test("las solicitudes de sponsor solo las lee un admin", async () => {
   await assertFails(getDoc(doc(env.authenticatedContext("u9", { email: "x@x.pe" }).firestore(), "sponsors", "s1")));
   await assertSucceeds(getDoc(doc(env.authenticatedContext("adm", ADM).firestore(), "sponsors", "s1")));
 });
+const mentor = (over: Record<string, unknown> = {}) => ({
+  edicion: "2026-uni", estado: "nuevo", nombre: "Luis Gómez", correo: "luis@correo.pe", telefono: "", ocupacion: "Data scientist en Acme",
+  perfil: "", areas: ["ml"], mensaje: "", consentimientoDatos: true, creadoEn: serverTimestamp(), ...over,
+});
+test("cualquiera, sin sesión, puede postular como mentor", async () => {
+  await assertSucceeds(setDoc(doc(env.unauthenticatedContext().firestore(), "mentores", "m1"), mentor()));
+});
+test("mentor sin consentimiento, con área inválida, estado distinto o campos extra se rechaza", async () => {
+  const db = env.unauthenticatedContext().firestore();
+  await assertFails(setDoc(doc(db, "mentores", "m1"), mentor({ consentimientoDatos: false })));
+  await assertFails(setDoc(doc(db, "mentores", "m2"), mentor({ areas: ["hackear"] })));
+  await assertFails(setDoc(doc(db, "mentores", "m3"), mentor({ extra: 1 })));
+  await assertFails(setDoc(doc(db, "mentores", "m4"), mentor({ estado: "confirmado" })));
+  await assertFails(setDoc(doc(db, "mentores", "m5"), mentor({ correo: "no-es-correo" })));
+});
+test("las postulaciones de mentores solo las lee un admin", async () => {
+  await assertSucceeds(setDoc(doc(env.unauthenticatedContext().firestore(), "mentores", "m1"), mentor()));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), "mentores", "m1")));
+  await assertFails(getDoc(doc(env.authenticatedContext("u9", { email: "x@x.pe" }).firestore(), "mentores", "m1")));
+  await assertSucceeds(getDoc(doc(env.authenticatedContext("adm", ADM).firestore(), "mentores", "m1")));
+});
 test("un admin cambia estados y notas; un postulante no", async () => {
   await assertSucceeds(submit("u1", "lider@correo.pe", base(), leaderIdx.concat([{ id: "m1@correo.pe", rol: "integrante" }])));
   const adm = env.authenticatedContext("adm", ADM).firestore();

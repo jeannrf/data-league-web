@@ -134,6 +134,25 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // ---------- Mentores: cualquiera puede enviar una postulación; solo los admins la leen y la gestionan ----------
+    function validMentor(d) {
+      return d.keys().hasOnly(['edicion', 'nombre', 'correo', 'telefono', 'ocupacion', 'perfil', 'areas', 'mensaje', 'consentimientoDatos', 'estado', 'creadoEn'])
+        && d.edicion == '2026-uni' && d.estado == 'nuevo'
+        && text(d.nombre, 100) && text(d.ocupacion, 120)
+        && emailRe(d.correo)
+        && d.telefono is string && d.telefono.size() <= 20
+        && d.perfil is string && d.perfil.size() <= 200
+        && d.areas is list && d.areas.size() >= 1 && d.areas.size() <= 6
+        && d.areas.hasOnly(['storytelling', 'ml', 'ia', 'gobierno', 'negocio', 'otro'])
+        && d.mensaje is string && d.mensaje.size() <= 1000
+        && d.consentimientoDatos == true
+        && d.creadoEn == request.time;
+    }
+    match /mentores/{id} {
+      allow create: if validMentor(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
     // ---------- Inscripciones a las jornadas virtuales: id = {evento}_{uid}; cada persona gestiona solo la suya ----------
     match /inscripciones/{id} {
       allow create: if signedIn()
