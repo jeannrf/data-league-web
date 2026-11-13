@@ -65,7 +65,7 @@ Cuando el administrador pasa una postulación a **Aprobada**, **En observación*
    - *To Email:* `{{to_email}}`
    - *Reply To:* `{{reply_to}}`
    - *From Name:* `Data League`
-   - *Content:* `{{message}}`
+   - *Content:* abre el editor de código (`<>`) y deja solo `{{{message_html}}}` (tres llaves: así respeta los saltos de línea)
    Guarda y anota el **Template ID**.
 3. **Account > General**: copia la **Public Key**.
 4. Agrega estas líneas a `.env.local` y reinicia `npm run dev`:

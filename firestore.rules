@@ -42,7 +42,7 @@ service cloud.firestore {
 
     // Postulación mínima: nombre, celular y correo de cada persona, más la aceptación de datos y bases.
     function validPostulacion(d) {
-      return d.keys().hasOnly(['edicion', 'uid', 'modo', 'estado', 'nombre', 'whatsapp', 'correo', 'nombreEquipo', 'integrantes', 'consentimiento', 'versionTextosLegales', 'creadoEn', 'actualizadoEn'])
+      return d.keys().hasOnly(['edicion', 'uid', 'modo', 'estado', 'nombre', 'whatsapp', 'correo', 'nombreEquipo', 'integrantes', 'consentimiento', 'versionTextosLegales', 'creadoEn', 'actualizadoEn', 'editadoEn', 'correoEstado', 'correoEnviadoEn'])
         && d.edicion == '2026-uni'
         && d.uid == request.auth.uid
         && d.modo in ['equipo', 'individual']
@@ -61,14 +61,8 @@ service cloud.firestore {
         );
     }
 
-    // Una postulación nueva completa (alta, o nueva postulación tras haber retirado la anterior).
-    function validNueva(d, uid) {
-      return beforeDeadline() && applicationsOpen()
-        && validPostulacion(d)
-        && d.estado == 'registrada'
-        && d.creadoEn == request.time
-        && d.actualizadoEn == request.time
-        && (d.modo == 'individual'
+    function validMembers(d) {
+      return (d.modo == 'individual'
             || d.integrantes.size() == 0
             || validMember(d.integrantes[0]))
         && (d.modo == 'individual'
@@ -77,6 +71,16 @@ service cloud.firestore {
         && (d.modo == 'individual'
             || d.integrantes.size() < 3
             || validMember(d.integrantes[2]));
+    }
+
+    // Una postulación nueva completa (alta, o nueva postulación tras haber retirado la anterior).
+    function validNueva(d, uid) {
+      return beforeDeadline() && applicationsOpen()
+        && validPostulacion(d) && validMembers(d)
+        && d.estado == 'registrada'
+        && d.creadoEn == request.time
+        && d.actualizadoEn == request.time
+        && !('editadoEn' in d) && !('correoEstado' in d) && !('correoEnviadoEn' in d);
     }
 
     // ---------- Postulaciones: el id es el uid de quien postula (una por cuenta) ----------
@@ -89,13 +93,35 @@ service cloud.firestore {
       allow update: if signedIn() && request.auth.uid == uid && resource.data.estado == 'retirada'
         && validNueva(request.resource.data, uid);
 
-      // El postulante solo puede retirar su postulación (la edición completa llega en la fase 3).
+      // Quien postuló puede editar sus datos y su equipo mientras esté «Pendiente» o «En observación» y siga abierto el plazo.
+      // No toca estado, correo de la cuenta ni fechas de alta; editadoEn marca el cambio para el panel de administración.
+      allow update: if signedIn() && request.auth.uid == uid
+        && resource.data.estado in ['registrada', 'observada']
+        && beforeDeadline() && applicationsOpen()
+        && validPostulacion(request.resource.data) && validMembers(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'whatsapp', 'modo', 'nombreEquipo', 'integrantes', 'actualizadoEn', 'editadoEn'])
+        && request.resource.data.actualizadoEn == request.time
+        && request.resource.data.editadoEn == request.time;
+
+      // El postulante puede retirar su postulación.
       allow update: if signedIn() && request.auth.uid == uid && beforeDeadline()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn'])
         && request.resource.data.estado == 'retirada'
         && request.resource.data.actualizadoEn == request.time;
 
       allow update, delete: if isAdmin();
+    }
+
+    // La postulación de quien escribe, tal como queda después del lote.
+    function postDespues() { return getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data; }
+    // true si el id del índice corresponde a un correo (líder o integrante) de esa postulación.
+    function enPostulacion(id) {
+      let d = postDespues();
+      let m = d.get('integrantes', []);
+      return id == '2026-uni_' + d.correo
+        || (m.size() > 0 && id == '2026-uni_' + m[0].correo)
+        || (m.size() > 1 && id == '2026-uni_' + m[1].correo)
+        || (m.size() > 2 && id == '2026-uni_' + m[2].correo);
     }
 
     // Entrada del índice de correos: solo para correos de la postulación que se guarda en el mismo lote.
@@ -105,15 +131,7 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.rol in ['lider', 'individual', 'integrante']
         && id.matches('^2026-uni_.+$')
-        && (
-          id == '2026-uni_' + getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.correo
-          || (getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.get('integrantes', []).size() > 0
-              && id == '2026-uni_' + getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.integrantes[0].correo)
-          || (getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.get('integrantes', []).size() > 1
-              && id == '2026-uni_' + getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.integrantes[1].correo)
-          || (getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.get('integrantes', []).size() > 2
-              && id == '2026-uni_' + getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.integrantes[2].correo)
-        );
+        && enPostulacion(id);
     }
 
     // ---------- Índice de unicidad de correos (RN-06) ----------
@@ -124,9 +142,9 @@ service cloud.firestore {
       allow create: if validIndice(id);
       // Una postulación retirada antes de existir la liberación de correos dejó su entrada: la misma persona la reutiliza.
       allow update: if resource.data.uid == request.auth.uid && validIndice(id);
-      // Al retirar su postulación, la persona libera los correos de su equipo para poder volver a postular.
+      // La persona libera correos de su equipo al retirar su postulación, o al quitar a alguien del equipo al editarla.
       allow delete: if signedIn() && resource.data.uid == request.auth.uid
-        && getAfter(/databases/$(database)/documents/postulaciones/$(request.auth.uid)).data.estado == 'retirada';
+        && (postDespues().estado == 'retirada' || !enPostulacion(id));
       allow update, delete: if isAdmin();
     }
 

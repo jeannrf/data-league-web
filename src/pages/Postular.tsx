@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { FormProvider, useFieldArray, useForm, useFormContext } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../lib/auth";
 import { firebaseConfigured } from "../lib/firebase";
-import { CorreoRepetido, enviarPostulacion, existePostulacion, postulacionCerrada, postulacionSchema, type PostulacionData, type PostulacionForm } from "../lib/postulacion";
+import { CorreoRepetido, NoEditable, editarPostulacion, enviarPostulacion, esEditable, existePostulacion, leerPostulacion, postulacionCerrada, postulacionSchema, type PostulacionData, type PostulacionForm } from "../lib/postulacion";
 import { FECHA_LIMITE } from "../config";
 import Shell from "../components/Shell";
 import AuthModal from "../components/AuthModal";
@@ -26,6 +26,8 @@ const aria = (name: string, hint?: boolean) => ({ id: name, "aria-describedby": 
 export default function Postular() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const editar = useSearchParams()[0].has("editar");   // /postular?editar: cambia los datos de una postulación ya enviada
+  const [editando, setEditando] = useState(false);
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -37,16 +39,29 @@ export default function Postular() {
   const { register, control, handleSubmit, watch, formState: { errors } } = methods;
   const { fields, append, remove } = useFieldArray({ control, name: "integrantes" });
 
-  // Si ya postuló, va a su área.
+  // Si ya postuló, va a su área. Al editar, se rellena el formulario con lo guardado (solo si aún se puede editar).
   useEffect(() => {
     if (!user) { setChecking(false); return; }
+    if (editar) {
+      void leerPostulacion(user.uid).then((p) => {
+        if (!p || !esEditable(p.estado)) { navigate("/mi-postulacion", { replace: true }); return; }
+        restored.current = true;
+        methods.reset({
+          correoLider: (user.email ?? "").toLowerCase(), nombre: p.nombre, celular: p.whatsapp, nombreEquipo: p.nombreEquipo ?? "",
+          integrantes: (p.integrantes ?? []).map((m) => ({ nombre: m.nombre, celular: m.whatsapp, correo: m.correo })), acepta: true,
+        } as PostulacionForm);
+        setEditando(true);
+        setChecking(false);
+      }).catch(() => navigate("/mi-postulacion", { replace: true }));
+      return;
+    }
     void existePostulacion(user.uid).then((ya) => { if (ya) navigate("/mi-postulacion", { replace: true }); else setChecking(false); });
-  }, [user, navigate]);
+  }, [user, navigate, editar, methods]);
 
   // Borrador en el navegador por si se recarga la página.
   const draftKey = user ? `dl-draft2-${user.uid}` : "";
   useEffect(() => {
-    if (!user || restored.current) return;
+    if (!user || editar || restored.current) return;
     restored.current = true;
     const mail = (user.email ?? "").toLowerCase();
     try {
@@ -55,20 +70,26 @@ export default function Postular() {
     } catch { methods.setValue("correoLider", mail); }
   }, [user, draftKey, methods]);
   useEffect(() => {
-    if (!user) return;
+    if (!user || editar) return;
     const sub = watch((v) => { try { const { acepta, ...rest } = v as PostulacionForm; void acepta; localStorage.setItem(draftKey, JSON.stringify(rest)); } catch { /* sin almacenamiento */ } });
     return () => sub.unsubscribe();
-  }, [watch, user, draftKey]);
+  }, [watch, user, draftKey, editar]);
 
   async function submit(values: PostulacionData) {
     if (!user) return;
     setSubmitting(true); setFormError("");
     try {
+      if (editando) {
+        await editarPostulacion(user, values);
+        navigate("/mi-postulacion", { state: { editada: true } });
+        return;
+      }
       await enviarPostulacion(user, values);
       try { localStorage.removeItem(draftKey); } catch { /* nada */ }
       navigate("/mi-postulacion", { state: { enviada: true } });
     } catch (e) {
-      if (e instanceof CorreoRepetido) setFormError(`El correo ${e.correo} ya está inscrito en otra postulación. Cada persona solo puede estar en una; cambia ese correo o avísale a esa persona.`);
+      if (e instanceof NoEditable) setFormError("Tu postulación ya no se puede editar: el equipo organizador cambió su estado. Revísala en «Mi postulación».");
+      else if (e instanceof CorreoRepetido) setFormError(`El correo ${e.correo} ya está inscrito en otra postulación. Cada persona solo puede estar en una; cambia ese correo o avísale a esa persona.`);
       else if ((e as { code?: string }).code === "permission-denied") setFormError("No pudimos guardar tu postulación. Puede que las postulaciones hayan cerrado o que algún dato no sea válido. Revísalos e inténtalo de nuevo.");
       else setFormError("Algo falló al enviar. Revisa tu conexión e inténtalo de nuevo; tus datos siguen aquí.");
     } finally { setSubmitting(false); }
@@ -99,7 +120,7 @@ export default function Postular() {
           <FormProvider {...methods}>
             <div>
               <div>
-                <h1 className="title h-xl">Postular</h1>
+                <h1 className="title h-xl">{editando ? "Editar postulación" : "Postular"}</h1>
                 <p className="mt-4 text-soft">Sesión: <b className="text-ink">{user.email}</b> · <button type="button" className="link-btn link-danger" onClick={() => void signOut()}>Cerrar sesión</button> · Cierra el 29 de noviembre, 23:59</p>
 
                 <form className="mt-10 grid gap-12" noValidate onSubmit={handleSubmit(submit)}>
@@ -152,7 +173,8 @@ export default function Postular() {
                   </div>
 
                   {formError && <p className="err text-lg" role="alert">{formError}</p>}
-                  <div><button type="submit" className="btn" disabled={submitting}>{submitting ? "Enviando…" : "Enviar postulación"}</button></div>
+                  <div className="flex flex-wrap items-center gap-4"><button type="submit" className="btn" disabled={submitting}>{submitting ? (editando ? "Guardando…" : "Enviando…") : editando ? "Guardar cambios" : "Enviar postulación"}</button>
+                    {editando && <Link to="/mi-postulacion" className="btn btn-ghost no-underline">Cancelar</Link>}</div>
                 </form>
               </div>
             </div>

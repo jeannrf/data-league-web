@@ -33,6 +33,10 @@ export function redactar(p: Post, estado: EstadoConCorreo, nota: string) {
   };
 }
 
+/** Texto plano a HTML seguro: escapa caracteres especiales (la nota la escribe el admin) y convierte saltos de línea. */
+const aHtml = (t: string) =>
+  t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\n/g, "<br>");
+
 /** Envía un correo con EmailJS. Devuelve null si salió bien, o el motivo del error. */
 export async function enviarCorreoEstado(p: Post, estado: EstadoConCorreo, nota: string): Promise<string | null> {
   if (!correoConfigurado) return "Falta configurar EmailJS.";
@@ -42,7 +46,8 @@ export async function enviarCorreoEstado(p: Post, estado: EstadoConCorreo, nota:
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         service_id: SERVICE, template_id: TEMPLATE, user_id: KEY,
-        template_params: { to_email: p.correo, to_name: p.nombre, subject, message, reply_to: CONTACTO ?? "" },
+        // message_html: el mismo texto escapado y con <br>, para la plantilla HTML de EmailJS ({{{message_html}}}).
+        template_params: { to_email: p.correo, to_name: p.nombre, subject, message, message_html: aHtml(message), reply_to: CONTACTO ?? "" },
       }),
     });
     if (r.ok) return null;

@@ -333,15 +333,25 @@ button.btn.btn-ghost { border: 2px solid var(--color-accent); }
 .adm-table tbody tr:hover td { background: #0f1626; }
 .adm-table input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--color-accent); }
 .adm-msg { max-width: 22rem; white-space: pre-wrap; color: var(--color-soft); }
+.adm-msg-txt { margin: 0; }
+.adm-msg-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+.adm-msg-more { margin-top: 0.35rem; padding: 0; background: none; border: 0; color: var(--color-accent); font: inherit; font-size: 0.85rem; font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.adm-msg-more:hover { color: var(--color-ink); }
 .pill { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 99px; border: 1.5px solid var(--color-line); font-size: 0.82rem; font-weight: 800; white-space: nowrap; }
 .pill.e-aprobada, .pill.e-valida, .pill.e-finalista { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg); }
 .pill.e-observada { border-color: var(--color-accent); color: var(--color-accent); }
 .pill.e-rechazada, .pill.e-no_seleccionada, .pill.e-retirada { color: var(--color-muted); }
 /* Estado editable en la tabla: mismo código de colores que la etiqueta. */
 .pill-select { min-height: 2.25rem; font-weight: 800; font-size: 0.85rem; cursor: pointer; }
-.pill-select.e-aprobada, .pill-select.e-valida, .pill-select.e-finalista { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg); }
-.pill-select.e-observada { border-color: var(--color-accent); color: var(--color-accent); }
-.pill-select.e-rechazada, .pill-select.e-no_seleccionada, .pill-select.e-retirada { color: var(--color-muted); }
+/* Estado por color: pendiente amarillo, aprobada verde, en observación azul, rechazada rojo, retirada (la elige quien postula) rosado. */
+.pill-select.e-registrada { background: rgb(255 222 65 / 0.12); border-color: #ffde41; color: #ffde41; }
+.pill-select.e-aprobada, .pill-select.e-valida, .pill-select.e-finalista { background: rgb(74 222 128 / 0.12); border-color: #4ade80; color: #4ade80; }
+.pill-select.e-observada { background: rgb(124 147 255 / 0.14); border-color: var(--color-primary-text); color: var(--color-primary-text); }
+.pill-select.e-rechazada, .pill-select.e-no_seleccionada { background: rgb(255 107 107 / 0.12); border-color: var(--color-danger); color: var(--color-danger); }
+.pill-select.e-retirada { background: rgb(244 114 182 / 0.12); border-color: #f472b6; color: #f472b6; }
+.pill-select:disabled { cursor: not-allowed; opacity: 1; }
+.adm-tag { display: inline-block; margin-top: 0.3rem; padding: 0.05rem 0.45rem; border: 1px solid #2dd4bf; border-radius: 2px; color: #2dd4bf; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.pill-select:focus { border-color: currentColor; }
 .pill-select option { background: #0c1220; color: var(--color-ink); }
 .adm-tabs { display: flex; gap: 0.25rem; border-bottom: 2px solid var(--color-line); overflow-x: auto; scrollbar-width: none; }
 .adm-tabs::-webkit-scrollbar { display: none; }

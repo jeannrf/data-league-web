@@ -134,6 +134,56 @@ test("el postulante no puede cambiarse el estado a 'finalista', pero sí retirar
   await assertFails(updateDoc(doc(db, "postulaciones", "u1"), { estado: "finalista", actualizadoEn: serverTimestamp() }));
   await assertSucceeds(updateDoc(doc(db, "postulaciones", "u1"), { estado: "retirada", actualizadoEn: serverTimestamp() }));
 });
+// ---------- Edición por quien postuló ----------
+/** Edita la postulación y ajusta el índice en un solo lote, como hace la app. */
+async function editar(uid: string, email: string, cambios: Record<string, unknown>, poner: { id: string; rol: string }[], quitar: string[] = []) {
+  const db = env.authenticatedContext(uid, { email }).firestore();
+  const batch = writeBatch(db);
+  batch.update(doc(db, "postulaciones", uid), { ...cambios, actualizadoEn: serverTimestamp(), editadoEn: serverTimestamp() });
+  for (const e of poner) batch.set(doc(db, "correosEdicion", `2026-uni_${e.id}`), { uid, rol: e.rol });
+  for (const c of quitar) batch.delete(doc(db, "correosEdicion", `2026-uni_${c}`));
+  return batch.commit();
+}
+const setEstado = (estado: string) => env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), "postulaciones", "u1"), { estado }); });
+test("pendiente: puede cambiar datos, cambiar un integrante y liberar su correo", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), equipoIdx));
+  await assertSucceeds(editar("u1", "lider@correo.pe", { nombre: "Nuevo Nombre", nombreEquipo: "Renombrado", integrantes: [member(2)] },
+    [...leaderIdx, { id: "m2@correo.pe", rol: "integrante" }], ["m1@correo.pe"]));
+  const d = await getDoc(doc(env.authenticatedContext("u1", { email: "lider@correo.pe" }).firestore(), "postulaciones", "u1"));
+  assert.equal(d.data()?.nombreEquipo, "Renombrado");
+  assert.ok(d.data()?.editadoEn);
+  // el correo liberado queda disponible para otra persona
+  await assertSucceeds(submit("u2", "otra@correo.pe", base({ uid: "u2", correo: "otra@correo.pe" }), [{ id: "otra@correo.pe", rol: "lider" }, { id: "m1@correo.pe", rol: "integrante" }]));
+});
+test("en observación también se edita; aprobada, rechazada o retirada no", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), equipoIdx));
+  await setEstado("observada");
+  await assertSucceeds(editar("u1", "lider@correo.pe", { nombre: "Corregido" }, []));
+  for (const e of ["aprobada", "rechazada", "retirada"]) {
+    await setEstado(e);
+    await assertFails(editar("u1", "lider@correo.pe", { nombre: "Otro" }, []));
+  }
+});
+test("al editar no puede cambiar el estado, el correo ni la fecha de alta, ni omitir editadoEn", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), equipoIdx));
+  await assertFails(editar("u1", "lider@correo.pe", { estado: "aprobada" }, []));
+  await assertFails(editar("u1", "lider@correo.pe", { correo: "otro@correo.pe" }, []));
+  await assertFails(editar("u1", "lider@correo.pe", { creadoEn: serverTimestamp() }, []));
+  const db = env.authenticatedContext("u1", { email: "lider@correo.pe" }).firestore();
+  await assertFails(updateDoc(doc(db, "postulaciones", "u1"), { nombre: "Sin marca", actualizadoEn: serverTimestamp() }));
+});
+test("al editar no puede borrar del índice un correo que sigue en su equipo, ni agregar uno ya tomado", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), equipoIdx));
+  await assertFails(editar("u1", "lider@correo.pe", { nombre: "X Y" }, [], ["m1@correo.pe"]));
+  await assertSucceeds(submit("u2", "otra@correo.pe", base({ uid: "u2", correo: "otra@correo.pe", integrantes: [member(5)] }), [{ id: "otra@correo.pe", rol: "lider" }, { id: "m5@correo.pe", rol: "integrante" }]));
+  await assertFails(editar("u1", "lider@correo.pe", { integrantes: [member(1), member(5)] }, [{ id: "m5@correo.pe", rol: "integrante" }]));
+});
+test("puede pasar de equipo a individual", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), equipoIdx));
+  const { deleteField } = await import("firebase/firestore");
+  await assertSucceeds(editar("u1", "lider@correo.pe", { modo: "individual", integrantes: deleteField(), nombreEquipo: deleteField() },
+    [{ id: "lider@correo.pe", rol: "individual" }], ["m1@correo.pe"]));
+});
 test("sin sesión no se puede crear nada", async () => {
   const db = env.unauthenticatedContext().firestore();
   await assertFails(setDoc(doc(db, "postulaciones", "u1"), base()));

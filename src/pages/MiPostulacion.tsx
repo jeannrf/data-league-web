@@ -5,11 +5,12 @@ import { EDICION } from "../config";
 import { useAuth } from "../lib/auth";
 import { db, firebaseConfigured } from "../lib/firebase";
 import Shell from "../components/Shell";
+import { esEditable, postulacionCerrada } from "../lib/postulacion";
 
 type Miembro = { nombre: string; correo: string; whatsapp: string };
 type Post = {
   modo: "equipo" | "individual"; estado: string; nombre: string; correo: string; whatsapp: string; nombreEquipo?: string;
-  integrantes?: Miembro[]; creadoEn?: Timestamp;
+  integrantes?: Miembro[]; creadoEn?: Timestamp; editadoEn?: Timestamp;
 };
 
 const estados: Record<string, { t: string; d: string }> = {
@@ -28,7 +29,7 @@ export default function MiPostulacion() {
   const location = useLocation();
   const [post, setPost] = useState<Post | null | undefined>(undefined);
   const [error, setError] = useState("");
-  const enviada = (location.state as { enviada?: boolean } | null)?.enviada;
+  const { enviada, editada } = (location.state as { enviada?: boolean; editada?: boolean } | null) ?? {};
 
   useEffect(() => {
     if (!user || !db) return;
@@ -65,6 +66,11 @@ export default function MiPostulacion() {
             <p className="display text-3xl !text-bg md:text-xl">¡Postulación enviada!</p>
           </div>
         )}
+        {editada && (
+          <div className="mb-8 bg-accent p-6 text-bg md:mb-4 md:px-5 md:py-3" role="status">
+            <p className="display text-3xl !text-bg md:text-xl">Cambios guardados</p>
+          </div>
+        )}
         <h1 className="title h-xl md:!text-4xl">Mi postulación</h1>
         {error && <p className="err mt-6" role="alert">{error}</p>}
         {post && (
@@ -78,12 +84,15 @@ export default function MiPostulacion() {
               <div className="sum-row"><dt>Modo</dt><dd>{post.modo === "equipo" ? `Equipo de ${1 + (post.integrantes?.length ?? 0)} personas` : "Individual"}</dd></div>
               {post.integrantes?.map((m, i) => <div className="sum-row" key={i}><dt>Integrante {i + 1}</dt><dd>{m.nombre} · {m.correo} · {m.whatsapp}</dd></div>)}
             </dl>
-            <p className="measure mt-8 text-muted md:mt-3 md:text-sm">Si necesitas corregir algún dato, escríbenos: la edición desde esta página llegará pronto.</p>
+            {post && esEditable(post.estado) && !postulacionCerrada()
+              ? <p className="measure mt-8 text-muted md:mt-3 md:text-sm">Puedes editar tus datos y tu equipo hasta el cierre de postulaciones.</p>
+              : post.estado !== "retirada" && <p className="measure mt-8 text-muted md:mt-3 md:text-sm">Si necesitas corregir algún dato, escríbenos.</p>}
           </>
         )}
         <div className="mt-12 flex flex-wrap md:mt-4 items-center gap-6">
           <Link to="/" className="btn btn-ghost btn-sm no-underline">Volver al inicio</Link>
           {post?.estado === "retirada" && <Link to="/postular" className="btn btn-sm no-underline">Postular de nuevo</Link>}
+          {post && esEditable(post.estado) && !postulacionCerrada() && <Link to="/postular?editar" className="btn btn-sm no-underline">Editar mi postulación</Link>}
           {post && post.estado !== "retirada" && <button className="link-btn" onClick={() => void retirar()}>Retirar mi postulación</button>}
           <button className="link-btn link-danger" onClick={() => void signOut()}>Cerrar sesión</button>
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import Shell from "../components/Shell";
 import { useAuth } from "../lib/auth";
@@ -9,6 +9,28 @@ import { correoConfigurado, enviarCorreoEstado, tieneCorreo } from "../lib/corre
 import { tiposApoyo } from "../lib/sponsor";
 import { areasMentor } from "../lib/mentor";
 import type { Inscripcion } from "../lib/eventos";
+
+/* ---------- mensaje largo truncado con "Ver más" ---------- */
+function Mensaje({ texto }: { texto: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [abierto, setAbierto] = useState(false);
+  const [largo, setLargo] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && !abierto) setLargo(el.scrollHeight > el.clientHeight + 1);
+  }, [texto, abierto]);
+  if (!texto) return <>—</>;
+  return (
+    <>
+      <p ref={ref} className={abierto ? "adm-msg-txt" : "adm-msg-txt adm-msg-clamp"}>{texto}</p>
+      {(largo || abierto) && (
+        <button type="button" className="adm-msg-more" aria-expanded={abierto} onClick={() => setAbierto(!abierto)}>
+          {abierto ? "Ver menos" : "Ver más"}
+        </button>
+      )}
+    </>
+  );
+}
 
 /* ---------- cambio de estado (con correo opcional) ---------- */
 function CambioEstado({ items, nuevo, onClose, onDone }: { items: Post[]; nuevo: string; onClose: () => void; onDone: (msg: string) => void }) {
@@ -96,13 +118,14 @@ function Ficha({ p, onClose, onCambiar }: { p: Post; onClose: () => void; onCamb
         <button type="button" className="auth-x" aria-label="Cerrar" onClick={onClose}>×</button>
         <h2 id="ficha-t" className="title text-3xl">{p.nombre}</h2>
         {p.modo === "equipo" && <p className="mt-2 text-xl font-bold text-accent">{p.nombreEquipo || "Equipo sin nombre"}</p>}
-        <p className="mt-1 text-muted">{p.modo === "equipo" ? `Equipo de ${1 + (p.integrantes?.length ?? 0)} personas` : "Postulación individual"} · registrada {fecha(p.creadoEn)}</p>
+        <p className="mt-1 text-muted">{p.modo === "equipo" ? `Equipo de ${1 + (p.integrantes?.length ?? 0)} personas` : "Postulación individual"} · registrada {fecha(p.creadoEn)}{p.editadoEn && <> · <span className="adm-tag">Editado</span> {fecha(p.editadoEn)}</>}</p>
         <div className="mt-6 grid gap-2">
           <label htmlFor="estado-sel" className="font-bold text-ink">Estado</label>
-          <select id="estado-sel" className="adm-input" value={ESTADOS.some((e) => e.v === p.estado) ? p.estado : ""} onChange={(e) => { if (e.target.value && e.target.value !== p.estado) onCambiar(e.target.value); }}>
+          <select id="estado-sel" className="adm-input" disabled={p.estado === "retirada"} value={ESTADOS.some((e) => e.v === p.estado) ? p.estado : ""} onChange={(e) => { if (e.target.value && e.target.value !== p.estado) onCambiar(e.target.value); }}>
             {!ESTADOS.some((e) => e.v === p.estado) && <option value="">{estadoTexto(p.estado)}</option>}
             {ESTADOS.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}
           </select>
+          {p.estado === "retirada" && <p className="text-[0.9rem] text-muted">La retiró quien postuló; el estado ya no se puede cambiar.</p>}
           {p.correoEstado && <p className="text-[0.9rem] text-muted">Último correo: «{estadoTexto(p.correoEstado)}», {fecha(p.correoEnviadoEn)}.</p>}
         </div>
         <dl className="summary mt-6">
@@ -192,12 +215,12 @@ function Postulaciones({ posts }: { posts: Post[] }) {
                 <td>{p.correo}</td>
                 <td>{p.whatsapp}</td>
                 <td>
-                  <select className={`adm-input pill-select e-${p.estado}`} aria-label={`Estado de ${p.nombreEquipo || p.nombre}`} value={ESTADOS.some((e) => e.v === p.estado) ? p.estado : ""} onChange={(e) => cambiarEstado(p, e.target.value)}>
+                  <select className={`adm-input pill-select e-${p.estado}`} aria-label={`Estado de ${p.nombreEquipo || p.nombre}`} disabled={p.estado === "retirada"} title={p.estado === "retirada" ? "La retiró quien postuló; no se puede cambiar." : undefined} value={ESTADOS.some((e) => e.v === p.estado) ? p.estado : ""} onChange={(e) => cambiarEstado(p, e.target.value)}>
                     {!ESTADOS.some((e) => e.v === p.estado) && <option value="">{estadoTexto(p.estado)}</option>}
                     {ESTADOS.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}
                   </select>
                 </td>
-                <td>{fecha(p.creadoEn)}</td>
+                <td>{fecha(p.creadoEn)}{p.editadoEn && <><br /><span className="adm-tag" title={`Editada por quien postuló el ${fecha(p.editadoEn)}`}>Editado</span></>}</td>
                 <td><button type="button" className="btn btn-ghost adm-btn" aria-label={`Ver info de ${p.nombreEquipo || p.nombre}`} onClick={() => setOpen(p)}>Info</button></td>
               </tr>
             ))}
@@ -232,7 +255,7 @@ function Sponsors({ items }: { items: SponsorDoc[] }) {
                 <td>{s.contacto}<br /><span className="text-muted">{s.cargo}{s.telefono ? ` · ${s.telefono}` : ""}</span></td>
                 <td><a href={`mailto:${s.correo}`}>{s.correo}</a></td>
                 <td>{s.tipoApoyo.map(tipo).join(", ")}</td>
-                <td className="adm-msg">{s.mensaje || "—"}</td>
+                <td className="adm-msg"><Mensaje texto={s.mensaje} /></td>
                 <td><select className="adm-input" aria-label={`Estado de ${s.organizacion}`} value={s.estado} onChange={(e) => void estado(s.id, e.target.value)}>{ESTADOS_SPONSOR.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}</select></td>
                 <td>{fecha(s.creadoEn)}</td>
               </tr>
@@ -266,7 +289,7 @@ function Mentores({ items }: { items: MentorDoc[] }) {
                 <td>{m.ocupacion}{m.perfil && <><br /><span className="text-muted">{m.perfil}</span></>}</td>
                 <td><a href={`mailto:${m.correo}`}>{m.correo}</a></td>
                 <td>{m.areas.map(area).join(", ")}</td>
-                <td className="adm-msg">{m.mensaje || "—"}</td>
+                <td className="adm-msg"><Mensaje texto={m.mensaje} /></td>
                 <td><select className="adm-input" aria-label={`Estado de ${m.nombre}`} value={m.estado} onChange={(e) => void estado(m.id, e.target.value)}>{ESTADOS_MENTOR.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}</select></td>
                 <td>{fecha(m.creadoEn)}</td>
               </tr>

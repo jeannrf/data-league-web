@@ -4,7 +4,7 @@ export type Miembro = { nombre: string; correo: string; whatsapp: string };
 export type Post = {
   id: string; edicion: string; uid: string; modo: "equipo" | "individual"; estado: string;
   nombre: string; correo: string; whatsapp: string; nombreEquipo?: string; integrantes?: Miembro[];
-  creadoEn?: Timestamp; actualizadoEn?: Timestamp;
+  creadoEn?: Timestamp; actualizadoEn?: Timestamp; editadoEn?: Timestamp;
   correoEstado?: string; correoEnviadoEn?: Timestamp;
 };
 export type SponsorDoc = {
