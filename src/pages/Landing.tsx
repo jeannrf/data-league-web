@@ -280,11 +280,26 @@ function Impact() {
 }
 
 function Prizes() {
+  const puestos = [
+    { p: "1.er puesto", n: 600, color: "text-accent", big: true },
+    { p: "2.º puesto", n: 400, color: "text-ink", big: false },
+    { p: "3.er puesto", n: 200, color: "text-primary-text", big: false },
+  ];
   return (
-    <section data-sec className="border-t border-line" aria-labelledby="h-premios">
-      <div className="wrap py-24 md:py-36">
-        <h2 id="h-premios" data-node className="title h-lg">Premios y jurado</h2>
-        <p className="display stroke-text mt-4 text-[clamp(1.9rem,6vw,4.5rem)] leading-[0.9] text-accent">Próximamente</p>
+    <section id="premios" data-sec data-ambient="off" className="border-t border-line" aria-labelledby="h-premios">
+      <div className="wrap py-24 text-center md:py-40">
+        <h2 id="h-premios" data-node className="title h-xl">Premios</h2>
+        <ul className="mt-12 grid gap-10 md:mt-20 md:grid-cols-3 md:items-end md:gap-0">
+          {puestos.map((x, i) => (
+            <li key={x.p} className={`flex flex-col items-center md:py-2 ${x.big ? "md:order-2 md:border-x md:border-line" : i === 1 ? "md:order-1" : "md:order-3"}`}>
+              <span className="text-[0.8rem] font-black uppercase tracking-[0.16em] text-muted">{x.p}</span>
+              <span className={`display mt-3 leading-[0.9] ${x.color} ${x.big ? "text-[clamp(4.5rem,22vw,6.5rem)] md:text-[clamp(4.5rem,9vw,8.5rem)]" : "text-[clamp(3.5rem,17vw,5rem)] md:text-[clamp(3.25rem,6vw,6rem)]"}`}>
+                <span className="mr-2 align-top text-[0.4em]">S/</span>{x.n}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="mx-auto mt-14 max-w-[36ch] text-[1.05rem] text-ink md:mt-20 md:text-xl">Además, nuestros aliados entregarán <b className="text-accent">becas</b> a los equipos destacados.</p>
       </div>
     </section>
   );
@@ -293,13 +308,28 @@ function Prizes() {
 function Allies() {
   const lista = [
     ...aliados.institucionales.map((nombre) => ({ nombre, rol: "Aliado institucional" })),
-    ...aliados.comunidades.map((nombre) => ({ nombre, rol: "Community partner" })),
   ];
   return (
     <section data-sec data-ambient="off" className="border-t border-line" aria-labelledby="h-aliados">
       <div className="wrap py-24 md:py-40">
         <h2 id="h-aliados" data-node className="title h-xl">Quienes hacen la liga</h2>
         <AlliesNet aliados={lista} />
+        <div className="mt-24 border-t border-line pt-12 md:mt-32 md:pt-16">
+          <h3 className="display text-[clamp(1.6rem,4vw,2.4rem)] leading-[1]">Comunidades <span className="text-primary">aliadas</span></h3>
+          <p className="mt-3 text-soft">Agrupaciones estudiantiles que impulsan la liga.</p>
+        </div>
+        <ul className="logos mt-8 md:mt-10">
+          {aliados.comunidades.map((c) => {
+            const inner = <><span className="logo-box"><img src={c.logo} alt="" loading="lazy" decoding="async" /></span><span className="logo-name">{c.nombre}</span></>;
+            return (
+              <li key={c.nombre}>
+                {c.enlace
+                  ? <a href={c.enlace} target="_blank" rel="noopener noreferrer" className="logo-card" aria-label={`${c.nombre} (abre su perfil en otra pestaña)`}>{inner}</a>
+                  : <div className="logo-card">{inner}</div>}
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );
@@ -314,21 +344,6 @@ function Mentors() {
           <p className="measure text-[1.375rem] font-bold leading-tight text-ink">¿Trabajas o investigas con datos? Acompaña a los equipos mientras desarrollan su desafío.</p>
           <p className="measure mt-5">Cuéntanos en qué áreas puedes guiar a estudiantes de todo el Perú. El equipo organizador te escribirá para conversarlo.</p>
           <Link to="/mentor" className="btn mt-8 no-underline">Postular como mentor</Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Jurado() {
-  return (
-    <section id="jurado" data-sec className="border-t border-line" aria-labelledby="h-jurado">
-      <div className="wrap grid gap-10 py-24 md:grid-cols-12 md:py-40">
-        <h2 id="h-jurado" data-node className="title h-xl md:col-span-7">Sé jurado de Data League</h2>
-        <div className="md:col-span-5 md:pt-3">
-          <p className="measure text-[1.375rem] font-bold leading-tight text-ink">¿Tienes experiencia evaluando proyectos de datos? Sé parte del jurado de la final.</p>
-          <p className="measure mt-5">El jurado evalúa los proyectos de todos los equipos finalistas el 5 de diciembre en la UNI. Cuéntanos tu trayectoria y el equipo organizador te escribirá para conversarlo.</p>
-          <Link to="/jurado" className="btn mt-8 no-underline">Postular como jurado</Link>
         </div>
       </div>
     </section>
@@ -422,7 +437,6 @@ export default function Landing() {
         <Prizes />
         <Allies />
         <Mentors />
-        <Jurado />
         <Sponsors />
         <Faq />
       </main>

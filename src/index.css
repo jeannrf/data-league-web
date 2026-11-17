@@ -252,6 +252,18 @@ button.btn.btn-ghost { border: 2px solid var(--color-accent); }
 .ally-dot { flex: none; display: block; width: 1.25rem; height: 1.25rem; margin-top: 0.15rem; border-radius: 50%; background: var(--color-primary); box-shadow: 0 0 0 5px var(--color-bg); transition: background 200ms, transform 300ms var(--ease-out-expo); }
 .ally { cursor: default; outline-offset: 8px; }
 .ally:hover .ally-dot, .ally:focus-visible .ally-dot { background: var(--color-accent); transform: scale(1.35); }
+/* Muro de logos de las comunidades aliadas: 2 columnas en celular, 4 en escritorio. */
+.logos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; padding: 0; list-style: none; }
+@media (min-width: 768px) { .logos { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; } }
+.logo-card { display: grid; justify-items: center; align-content: center; gap: 0.9rem; height: 100%; padding: 1.4rem 0.9rem 1.1rem; border: 1px solid var(--color-line); background: #0a0f1a; color: var(--color-soft); text-decoration: none; transition: border-color 200ms, transform 300ms var(--ease-out-expo), background 200ms; }
+a.logo-card:hover, a.logo-card:focus-visible { border-color: var(--color-accent); background: #0e1524; transform: translateY(-3px); }
+a.logo-card:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.logo-box { --lh: 4.5rem; display: flex; align-items: center; justify-content: center; width: 100%; height: var(--lh); }
+@media (min-width: 768px) { .logo-box { --lh: 5.5rem; } }
+.logo-box img { display: block; max-width: 88%; max-height: var(--lh); width: auto; height: auto; object-fit: contain; }
+.logo-name { font-family: var(--font-sans); font-size: 0.8rem; font-weight: 700; line-height: 1.25; text-align: center; color: var(--color-muted); }
+a.logo-card:hover .logo-name, a.logo-card:focus-visible .logo-name { color: var(--color-ink); }
+@media (prefers-reduced-motion: reduce) { a.logo-card:hover, a.logo-card:focus-visible { transform: none; } }
 .ally-line { fill: none; stroke: var(--color-line); stroke-width: 2.5; transition: stroke 250ms; }
 .ally-line.hot { stroke: var(--color-accent); stroke-dasharray: 10 8; animation: flow 700ms linear infinite; }
 @keyframes flow { to { stroke-dashoffset: -18; } }
@@ -339,11 +351,15 @@ button.btn.btn-ghost { border: 2px solid var(--color-accent); }
 .adm-msg-txt { margin: 0; }
 .adm-cards { display: grid; gap: 0.9rem; margin: 0; padding: 0; list-style: none; }
 .adm-card { display: grid; gap: 0.35rem; padding: 1.1rem 1rem; border: 1px solid var(--color-line); background: #0c1220; color: var(--color-ink); min-width: 0; }
-.adm-card .adm-input { margin-top: 0.6rem; width: 100%; }
-.adm-dl { display: grid; gap: 0.15rem; margin: 0.5rem 0 0; }
-.adm-dl dt { margin-top: 0.55rem; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); }
-.adm-dl dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.adm-card .adm-msg { max-width: none; }
+.adm-card .adm-input { width: 100%; }
+/* Mentores y jurados: tarjetas hasta tablet, tabla desde 1024px. (Va aquí y no con lg:hidden porque este CSS gana a las utilidades de Tailwind.) */
+.adm-desk { display: none; }
+@media (min-width: 1024px) { .adm-cards { display: none; } .adm-desk { display: block; } }
+.jor-dot { display: inline-block; width: 1.1rem; height: 1.1rem; border-radius: 50%; border: 2px solid var(--color-muted); vertical-align: middle; }
+.jor-dot.on { background: var(--color-accent); border-color: var(--color-accent); }
+.adm-table-jor { min-width: 44rem; }
+.adm-table-jor .c { text-align: center; white-space: nowrap; }
+.sum-long { white-space: pre-wrap; font-weight: 400 !important; }
 .adm-msg-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
 .adm-msg-more { margin-top: 0.35rem; padding: 0; background: none; border: 0; color: var(--color-accent); font: inherit; font-size: 0.85rem; font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .adm-msg-more:hover { color: var(--color-ink); }
@@ -386,15 +402,15 @@ button.btn.btn-ghost { border: 2px solid var(--color-accent); }
 @media (min-width: 640px) { .cd-cell { min-width: 5.5rem; padding-right: 1.5rem; margin-right: 0.75rem; } }
 
 @media (max-width: 400px) { .btn { padding: 0 1.1rem; } }
-/* Hero: «Sé mentor», «Sé jurado» y «Sé sponsor» van juntos. En celular, en una fila de tres columnas iguales y más bajos;
+/* Hero: los botones secundarios («Sé mentor», «Sé sponsor») van juntos. En celular, en una fila de columnas iguales y más bajos;
    «Postula» va abajo, en su propia fila y a la izquierda. */
 .hero-secs { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 @media (max-width: 639px) {
-  .hero-secs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; width: 100%; }
+  .hero-secs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0.5rem; width: 100%; }
   .hero-sec { min-height: 2.75rem; padding: 0 0.4rem; font-size: 0.78rem; letter-spacing: 0.04em; line-height: 1.15; }
 }
 @media (max-width: 359px) { .hero-sec { padding: 0 0.25rem; font-size: 0.66rem; letter-spacing: 0.02em; white-space: nowrap; } }
-/* Tablet y laptop angosta: los tres siempre en una fila, un poco más compactos. */
+/* Tablet y laptop angosta: siempre en una fila, un poco más compactos. */
 @media (min-width: 640px) and (max-width: 1279px) { .hero-secs { flex-wrap: nowrap; } .hero-sec { padding: 0 1rem; font-size: 0.85rem; } }
 
 /* ---------- Jornadas virtuales (estilo agenda) ---------- */

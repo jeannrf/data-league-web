@@ -51,7 +51,7 @@ export default function AlliesNet({ aliados }: { aliados: Ally[] }) {
         <span data-hub className="allies-hub" aria-hidden="true" />
         <span className="display text-2xl"><span>Data </span><span className="text-primary">League</span></span>
       </div>
-      <ul className="relative z-10 mt-14 grid gap-10 md:mt-24 md:grid-cols-4 md:gap-8">
+      <ul className="relative z-10 mt-14 grid gap-10 md:mt-24 md:grid-cols-[repeat(var(--n),minmax(0,1fr))] md:gap-8" style={{ ["--n" as string]: aliados.length }}>
         {aliados.map((a, i) => (
           <li key={a.nombre} tabIndex={0} className="ally flex gap-4 md:block"
             onPointerEnter={() => hot(i, true)} onPointerLeave={() => hot(i, false)} onFocus={() => hot(i, true)} onBlur={() => hot(i, false)}>

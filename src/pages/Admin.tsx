@@ -269,12 +269,59 @@ function Sponsors({ items }: { items: SponsorDoc[] }) {
 }
 
 /* ---------- mentores y jurados ---------- */
+type Opc = readonly { v: string; t: string }[];
+const txt = (l: Opc, v?: string) => (v ? l.find((o) => o.v === v)?.t ?? v : "");
+const lista = (l: Opc, vs?: string[]) => (vs ?? []).map((v) => txt(l, v)).join(", ");
+const experiencia = (m: ExpertoDoc) => [txt(aniosExperiencia, m.anios), lista(rolesPrevios, m.rolesPrevios)].filter(Boolean).join(" · ");
+
+function EstadoExperto({ m, rol, id }: { m: ExpertoDoc; rol: Rol; id?: string }) {
+  async function cambiar(v: string) { if (db) await updateDoc(doc(db, coleccion[rol], m.id), { estado: v }); }
+  return (
+    <select id={id} className="adm-input" aria-label={id ? undefined : `Estado de ${m.nombre}`} value={m.estado} onChange={(e) => void cambiar(e.target.value)}>
+      {ESTADOS_EXPERTO.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}
+    </select>
+  );
+}
+
+function FichaExperto({ m, rol, onClose }: { m: ExpertoDoc; rol: Rol; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => { ref.current?.showModal(); }, []);
+  const row = (k: string, v: React.ReactNode) => <div className="sum-row"><dt>{k}</dt><dd>{v || "—"}</dd></div>;
+  const largo = (k: string, v?: string) => <div className="sum-row"><dt>{k}</dt><dd className="sum-long">{v || "—"}</dd></div>;
+  const url = m.perfil && /^https?:\/\//i.test(m.perfil) ? m.perfil : "";
+  return (
+    <dialog ref={ref} className="ficha" aria-labelledby="ficha-x" onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }}>
+      <div className="ficha-box">
+        <button type="button" className="auth-x" aria-label="Cerrar" onClick={onClose}>×</button>
+        <h2 id="ficha-x" className="title text-3xl">{m.nombre}</h2>
+        <p className="mt-2 text-lg text-ink">{m.ocupacion}</p>
+        <p className="mt-1 text-muted">{rol === "jurado" ? "Jurado" : "Mentor"} · postuló {fecha(m.creadoEn)}</p>
+        <div className="mt-6 grid gap-2">
+          <label htmlFor="estado-exp" className="font-bold text-ink">Estado</label>
+          <EstadoExperto m={m} rol={rol} id="estado-exp" />
+        </div>
+        <dl className="summary mt-6">
+          {row("Correo", <a href={`mailto:${m.correo}`}>{m.correo}</a>)}
+          {row("Teléfono", m.telefono)}
+          {row("LinkedIn o web", url ? <a href={url} target="_blank" rel="noopener noreferrer">{m.perfil}</a> : m.perfil)}
+          {row("Años de experiencia", txt(aniosExperiencia, m.anios))}
+          {row("Participó antes como", lista(rolesPrevios, m.rolesPrevios))}
+          {row("Áreas", lista(areasMentor, m.areas))}
+          {rol === "jurado" && row("Disponibilidad", txt(disponibilidades, m.disponibilidad))}
+          {largo("Trayectoria", m.trayectoria)}
+          {largo("Referencias", m.referencias)}
+          {largo("Mensaje", m.mensaje)}
+        </dl>
+      </div>
+    </dialog>
+  );
+}
+
 function Expertos({ rol, items }: { rol: Rol; items: ExpertoDoc[] }) {
   const jurado = rol === "jurado";
   const nombreRol = jurado ? "jurados" : "mentores";
-  async function estado(id: string, v: string) { if (db) await updateDoc(doc(db, coleccion[rol], id), { estado: v }); }
-  const txt = (l: readonly { v: string; t: string }[], v?: string) => (v ? l.find((o) => o.v === v)?.t ?? v : "");
-  const lista = (l: readonly { v: string; t: string }[], vs?: string[]) => (vs ?? []).map((v) => txt(l, v)).join(", ");
+  const [abierto, setAbierto] = useState<string | null>(null);
+  const actual = items.find((m) => m.id === abierto);   // siempre la versión más reciente del documento
   async function exportar() {
     await descargarXlsx(`${nombreRol}-${EDICION}.xlsx`, [
       ["Nombre", "Correo", "Teléfono", "Ocupación", "Perfil", "Años de experiencia", "Participó antes como", "Trayectoria", "Referencias", "Áreas", ...(jurado ? ["Disponibilidad"] : []), "Mensaje", "Estado", "Fecha"],
@@ -282,17 +329,14 @@ function Expertos({ rol, items }: { rol: Rol; items: ExpertoDoc[] }) {
         lista(areasMentor, m.areas), ...(jurado ? [txt(disponibilidades, m.disponibilidad)] : []), m.mensaje, m.estado, m.creadoEn ? m.creadoEn.toDate().toISOString() : ""]),
     ], jurado ? "Jurados" : "Mentores");
   }
-  const sel = (m: ExpertoDoc) => (
-    <select className="adm-input" aria-label={`Estado de ${m.nombre}`} value={m.estado} onChange={(e) => void estado(m.id, e.target.value)}>{ESTADOS_EXPERTO.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}</select>
-  );
-  const exp = (m: ExpertoDoc) => [txt(aniosExperiencia, m.anios), lista(rolesPrevios, m.rolesPrevios)].filter(Boolean).join(" · ") || "—";
+  const ver = (m: ExpertoDoc) => <button type="button" className="adm-msg-more mt-0 whitespace-nowrap" onClick={() => setAbierto(m.id)}>Ver detalles</button>;
   const vacio = `Todavía no hay postulaciones de ${nombreRol}.`;
   return (
     <div>
       <div className="adm-bar"><span className="text-soft">{items.length} postulación(es)</span><button type="button" className="btn btn-ghost adm-btn" onClick={() => void exportar()}>Exportar XLSX</button></div>
 
-      {/* Celular y tablet: una tarjeta por persona */}
-      <ul className="adm-cards lg:hidden">
+      {/* Celular y tablet: tarjetas resumidas */}
+      <ul className="adm-cards">
         {items.map((m) => (
           <li key={m.id} className="adm-card">
             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
@@ -300,55 +344,63 @@ function Expertos({ rol, items }: { rol: Rol; items: ExpertoDoc[] }) {
               <span className="text-[0.85rem] text-muted">{fecha(m.creadoEn)}</span>
             </div>
             <p className="text-soft">{m.ocupacion}</p>
-            <p className="break-words"><a href={`mailto:${m.correo}`}>{m.correo}</a>{m.telefono && <span className="text-muted"> · {m.telefono}</span>}</p>
-            {m.perfil && <p className="break-words text-muted">{m.perfil}</p>}
-            <dl className="adm-dl">
-              <dt>Experiencia</dt><dd>{exp(m)}</dd>
-              <dt>Áreas</dt><dd>{lista(areasMentor, m.areas)}</dd>
-              {jurado && <><dt>Disponibilidad</dt><dd>{txt(disponibilidades, m.disponibilidad) || "—"}</dd></>}
-              <dt>Trayectoria</dt><dd className="adm-msg"><Mensaje texto={m.trayectoria ?? ""} /></dd>
-              <dt>Referencias</dt><dd className="adm-msg"><Mensaje texto={m.referencias ?? ""} /></dd>
-              <dt>Mensaje</dt><dd className="adm-msg"><Mensaje texto={m.mensaje} /></dd>
-            </dl>
-            {sel(m)}
+            <p className="text-[0.95rem] text-muted">{experiencia(m) || "Sin datos de experiencia"}{jurado && m.disponibilidad ? ` · ${txt(disponibilidades, m.disponibilidad)}` : ""}</p>
+            <div className="mt-2 flex items-center gap-4"><div className="min-w-0 flex-1"><EstadoExperto m={m} rol={rol} /></div>{ver(m)}</div>
           </li>
         ))}
         {!items.length && <li className="py-8 text-center text-soft">{vacio}</li>}
       </ul>
 
       {/* Escritorio: tabla */}
-      <div className="adm-scroll hidden lg:block">
+      <div className="adm-scroll adm-desk">
         <table className="adm-table">
-          <thead><tr><th>Nombre</th><th>Ocupación</th><th>Experiencia</th><th>Trayectoria y referencias</th><th>Áreas</th>{jurado && <th>Disponibilidad</th>}<th>Mensaje</th><th>Estado</th><th>Fecha</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Ocupación</th><th>Experiencia</th><th>Áreas</th>{jurado && <th>Disponibilidad</th>}<th>Estado</th><th>Fecha</th><th><span className="sr-only">Acciones</span></th></tr></thead>
           <tbody>
             {items.map((m) => (
               <tr key={m.id}>
-                <td><b>{m.nombre}</b><br /><a href={`mailto:${m.correo}`}>{m.correo}</a>{m.telefono && <><br /><span className="text-muted">{m.telefono}</span></>}</td>
-                <td>{m.ocupacion}{m.perfil && <><br /><span className="break-all text-muted">{m.perfil}</span></>}</td>
-                <td className="min-w-[9rem]">{txt(aniosExperiencia, m.anios) || "—"}{m.rolesPrevios?.length ? <><br /><span className="text-muted">{lista(rolesPrevios, m.rolesPrevios)}</span></> : null}</td>
-                <td className="adm-msg"><Mensaje texto={m.trayectoria ?? ""} />{m.referencias && <div className="mt-2 border-t border-line pt-2"><span className="text-[0.8rem] font-extrabold uppercase tracking-wider text-muted">Referencias</span><Mensaje texto={m.referencias} /></div>}</td>
+                <td><b>{m.nombre}</b><br /><a href={`mailto:${m.correo}`} className="text-[0.9rem]">{m.correo}</a></td>
+                <td>{m.ocupacion}</td>
+                <td>{txt(aniosExperiencia, m.anios) || "—"}{m.rolesPrevios?.length ? <><br /><span className="text-muted">{lista(rolesPrevios, m.rolesPrevios)}</span></> : null}</td>
                 <td>{lista(areasMentor, m.areas)}</td>
                 {jurado && <td>{txt(disponibilidades, m.disponibilidad) || "—"}</td>}
-                <td className="adm-msg"><Mensaje texto={m.mensaje} /></td>
-                <td>{sel(m)}</td>
-                <td>{fecha(m.creadoEn)}</td>
+                <td><EstadoExperto m={m} rol={rol} /></td>
+                <td className="whitespace-nowrap">{fecha(m.creadoEn)}</td>
+                <td>{ver(m)}</td>
               </tr>
             ))}
-            {!items.length && <tr><td colSpan={jurado ? 9 : 8} className="py-8 text-center text-soft">{vacio}</td></tr>}
+            {!items.length && <tr><td colSpan={jurado ? 8 : 7} className="py-8 text-center text-soft">{vacio}</td></tr>}
           </tbody>
         </table>
       </div>
+      {actual && <FichaExperto m={actual} rol={rol} onClose={() => setAbierto(null)} />}
     </div>
   );
 }
 
 /* ---------- inscripciones a las jornadas virtuales ---------- */
 function Jornadas({ items }: { items: Inscripcion[] }) {
-  const [ev, setEv] = useState(eventos[0]?.id ?? "");
+  const [ev, setEv] = useState("todas");
+  const todas = ev === "todas";
   const lista = items.filter((i) => i.evento === ev);
   const nombreEv = (id: string) => eventos.find((e) => e.id === id)?.tema ?? id;
+  const corto = (e: (typeof eventos)[number]) => `${e.dia} ${e.mes}`;
+  // «Todas»: una fila por cuenta, con las jornadas a las que se inscribió.
+  const personas = useMemo(() => {
+    const m = new Map<string, { uid: string; nombre: string; correo: string; ev: Set<string> }>();
+    for (const i of items) {
+      const p = m.get(i.uid) ?? { uid: i.uid, nombre: i.nombre, correo: i.correo, ev: new Set<string>() };
+      p.ev.add(i.evento); m.set(i.uid, p);
+    }
+    return [...m.values()].sort((a, b) => b.ev.size - a.ev.size || a.nombre.localeCompare(b.nombre, "es"));
+  }, [items]);
+  const correos = todas ? personas.map((p) => p.correo) : lista.map((i) => i.correo);
   async function exportar() {
-    await descargarXlsx(`inscritos-${ev}.xlsx`, [["Jornada", "Nombre", "Correo", "Fecha de inscripción"], ...lista.map((i) => [nombreEv(i.evento), i.nombre, i.correo, i.creadoEn ? i.creadoEn.toDate().toISOString() : ""])], "Inscritos");
+    if (todas) {
+      await descargarXlsx(`inscritos-todas.xlsx`, [["Nombre", "Correo", ...eventos.map((e) => `${corto(e)} · ${e.tema}`), "Total"],
+        ...personas.map((p) => [p.nombre, p.correo, ...eventos.map((e) => (p.ev.has(e.id) ? "Sí" : "No")), p.ev.size])], "Inscritos");
+    } else {
+      await descargarXlsx(`inscritos-${ev}.xlsx`, [["Jornada", "Nombre", "Correo", "Fecha de inscripción"], ...lista.map((i) => [nombreEv(i.evento), i.nombre, i.correo, i.creadoEn ? i.creadoEn.toDate().toISOString() : ""])], "Inscritos");
+    }
   }
   return (
     <div>
@@ -356,19 +408,42 @@ function Jornadas({ items }: { items: Inscripcion[] }) {
         {eventos.map((e) => <div key={e.id}><b>{items.filter((i) => i.evento === e.id).length}</b><span>{e.dia} {e.mes} · {e.tema}</span></div>)}
       </div>
       <div className="adm-bar">
-        <select className="adm-input" aria-label="Jornada" value={ev} onChange={(e) => setEv(e.target.value)}>{eventos.map((e) => <option key={e.id} value={e.id}>{e.dia} {e.mes} · {e.tema}</option>)}</select>
-        <span className="text-soft">{lista.length} inscrito(s)</span>
+        <select className="adm-input" aria-label="Jornada" value={ev} onChange={(e) => setEv(e.target.value)}>
+          <option value="todas">Todas las jornadas</option>
+          {eventos.map((e) => <option key={e.id} value={e.id}>{e.dia} {e.mes} · {e.tema}</option>)}
+        </select>
+        <span className="text-soft">{todas ? `${personas.length} persona(s)` : `${lista.length} inscrito(s)`}</span>
         <button type="button" className="btn btn-ghost adm-btn" onClick={() => void exportar()}>Exportar XLSX</button>
-        <button type="button" className="btn btn-ghost adm-btn" onClick={() => void navigator.clipboard.writeText(lista.map((i) => i.correo).join(", "))}>Copiar correos</button>
+        <button type="button" className="btn btn-ghost adm-btn" onClick={() => void navigator.clipboard.writeText(correos.join(", "))}>Copiar correos</button>
       </div>
       <div className="adm-scroll">
-        <table className="adm-table">
-          <thead><tr><th>Nombre</th><th>Correo</th><th>Inscrito</th></tr></thead>
-          <tbody>
-            {lista.map((i) => <tr key={i.id}><td>{i.nombre}</td><td>{i.correo}</td><td>{fecha(i.creadoEn)}</td></tr>)}
-            {!lista.length && <tr><td colSpan={3} className="py-8 text-center text-soft">Todavía no hay inscritos en esta jornada.</td></tr>}
-          </tbody>
-        </table>
+        {todas ? (
+          <table className="adm-table adm-table-jor">
+            <thead><tr><th>Nombre</th><th>Correo</th>{eventos.map((e) => <th key={e.id} className="c" title={e.tema}>{corto(e)}</th>)}<th className="c">Total</th></tr></thead>
+            <tbody>
+              {personas.map((p) => (
+                <tr key={p.uid}>
+                  <td>{p.nombre}</td>
+                  <td>{p.correo}</td>
+                  {eventos.map((e) => {
+                    const on = p.ev.has(e.id);
+                    return <td key={e.id} className="c"><span className={on ? "jor-dot on" : "jor-dot"} title={`${corto(e)} · ${e.tema}: ${on ? "inscrito" : "no inscrito"}`} /><span className="sr-only">{on ? "Inscrito" : "No inscrito"}</span></td>;
+                  })}
+                  <td className="c font-bold">{p.ev.size}/{eventos.length}</td>
+                </tr>
+              ))}
+              {!personas.length && <tr><td colSpan={eventos.length + 3} className="py-8 text-center text-soft">Todavía no hay inscritos.</td></tr>}
+            </tbody>
+          </table>
+        ) : (
+          <table className="adm-table">
+            <thead><tr><th>Nombre</th><th>Correo</th><th>Inscrito</th></tr></thead>
+            <tbody>
+              {lista.map((i) => <tr key={i.id}><td>{i.nombre}</td><td>{i.correo}</td><td>{fecha(i.creadoEn)}</td></tr>)}
+              {!lista.length && <tr><td colSpan={3} className="py-8 text-center text-soft">Todavía no hay inscritos en esta jornada.</td></tr>}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

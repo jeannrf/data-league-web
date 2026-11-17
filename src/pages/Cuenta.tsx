@@ -6,7 +6,7 @@ import AuthModal from "../components/AuthModal";
 import { useAuth } from "../lib/auth";
 import { db, firebaseConfigured } from "../lib/firebase";
 import { eventos, POSTULACION_ABIERTA } from "../config";
-import { cancelarInscripcion, descargarIcs, nombreDe, useMisInscripciones } from "../lib/eventos";
+import { cancelarInscripcion, nombreDe, useMisInscripciones } from "../lib/eventos";
 import { estadoTexto } from "../lib/admin";
 
 const iniciales = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
@@ -75,7 +75,6 @@ export default function Cuenta() {
                         <span className="min-w-0 flex-1">
                           <span className="block font-bold text-ink">{e.tema}</span>
                           <span className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                            <button type="button" className="link-btn" onClick={() => descargarIcs(e)}>Añadir al calendario</button>
                             <button type="button" className="link-btn" onClick={() => { if (window.confirm("¿Cancelar tu inscripción a esta jornada?")) void cancelarInscripcion(user, e.id); }}>Cancelar</button>
                           </span>
                         </span>

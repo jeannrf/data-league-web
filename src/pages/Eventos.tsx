@@ -5,7 +5,7 @@ import AuthModal from "../components/AuthModal";
 import Flyer from "../components/Flyer";
 import { useAuth } from "../lib/auth";
 import { eventos, type Jornada } from "../config";
-import { cancelarInscripcion, descargarIcs, inscribirse, useMisInscripciones, yaPaso } from "../lib/eventos";
+import { cancelarInscripcion, inscribirse, useMisInscripciones, yaPaso } from "../lib/eventos";
 
 /** Ventana con la información de una jornada: flyer a un lado, datos al otro y la acción siempre a la vista. */
 function InfoEvento({ e, inscrito, paso, onClose, onInscribir }: { e: Jornada & { id: string }; inscrito: boolean; paso: boolean; onClose: () => void; onInscribir: () => void }) {
@@ -13,7 +13,7 @@ function InfoEvento({ e, inscrito, paso, onClose, onInscribir }: { e: Jornada & 
   useEffect(() => { ref.current?.showModal(); }, []);
   const fl = new Date(`${e.fecha}T12:00:00-05:00`).toLocaleDateString("es-PE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const fechaLarga = fl.charAt(0).toUpperCase() + fl.slice(1);
-  const pasos = ["Inscríbete con tu cuenta de Google.", "Aquí verás el enlace y la hora cuando estén confirmados.", "Añade la jornada a tu calendario."];
+  const pasos = ["Inscríbete con tu cuenta de Google.", "Aquí verás el enlace y la hora cuando estén confirmados."];
   return (
     <dialog ref={ref} className="auth-modal info-modal" aria-labelledby="info-t" onClose={onClose} onClick={(ev) => { if (ev.target === ref.current) onClose(); }}>
       <div className="info-box">
@@ -40,7 +40,7 @@ function InfoEvento({ e, inscrito, paso, onClose, onInscribir }: { e: Jornada & 
         </div>
         <footer className="info-actions">
           {paso ? <span className="text-muted">Esta jornada ya pasó.</span>
-            : inscrito ? <><span className="font-bold text-accent" role="status">✓ Estás inscrito</span><button type="button" className="btn btn-ghost btn-sm" onClick={() => descargarIcs(e)}>Añadir al calendario</button></>
+            : inscrito ? <span className="font-bold text-accent" role="status">✓ Estás inscrito</span>
               : <button type="button" className="btn" onClick={onInscribir}>Inscribirme</button>}
         </footer>
       </div>
@@ -103,10 +103,7 @@ export default function Eventos() {
                 <div className="evento-acc">
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setInfo(e.id)}>Ver info</button>
                   {paso ? <span className="text-muted">Ya pasó</span>
-                    : inscrito ? (<>
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => descargarIcs(e)}>Añadir al calendario</button>
-                        <button type="button" className="link-btn" disabled={busy === e.id} onClick={() => void quitar(e.id)}>Cancelar inscripción</button>
-                      </>)
+                    : inscrito ? <button type="button" className="link-btn" disabled={busy === e.id} onClick={() => void quitar(e.id)}>Cancelar inscripción</button>
                       : <button type="button" className="btn" disabled={busy === e.id} onClick={() => void reservar(e.id)}>{busy === e.id ? "Guardando…" : "Inscribirme"}</button>}
                 </div>
               </li>

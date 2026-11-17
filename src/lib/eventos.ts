@@ -39,16 +39,3 @@ export function useMisInscripciones(uid: string | undefined) {
 
 /** El día ya pasó (hora de Perú), así que ya no se puede uno inscribir. */
 export const yaPaso = (j: Jornada) => Date.now() > new Date(`${j.fecha}T23:59:59-05:00`).getTime();
-
-/** Archivo .ics de día completo, para añadir la jornada al calendario. */
-export function descargarIcs(j: Jornada) {
-  const d = j.fecha.replace(/-/g, "");
-  const sig = new Date(`${j.fecha}T12:00:00Z`); sig.setUTCDate(sig.getUTCDate() + 1);
-  const fin = sig.toISOString().slice(0, 10).replace(/-/g, "");
-  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Data League//ES", "BEGIN:VEVENT", `UID:${j.id ?? d}@data-league-2026`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
-    `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${fin}`, `SUMMARY:Data League · ${j.tema}`, "DESCRIPTION:Jornada virtual de Data League 2026. La hora y el enlace se confirman en la web.", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
-  const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
-  const a = document.createElement("a");
-  a.href = url; a.download = `data-league-${j.id ?? d}.ics`; a.click();
-  URL.revokeObjectURL(url);
-}
