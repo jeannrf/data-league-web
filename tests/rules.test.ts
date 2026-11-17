@@ -217,7 +217,8 @@ test("las solicitudes de sponsor solo las lee un admin", async () => {
 });
 const mentor = (over: Record<string, unknown> = {}) => ({
   edicion: "2026-uni", estado: "nuevo", nombre: "Luis Gómez", correo: "luis@correo.pe", telefono: "", ocupacion: "Data scientist en Acme",
-  perfil: "", areas: ["ml"], mensaje: "", consentimientoDatos: true, creadoEn: serverTimestamp(), ...over,
+  perfil: "", anios: "5-10", rolesPrevios: ["mentor", "ponente"], trayectoria: "Lidero un equipo de analítica y fui mentor en dos hackatones.",
+  referencias: "", areas: ["ml"], mensaje: "", consentimientoDatos: true, creadoEn: serverTimestamp(), ...over,
 });
 test("cualquiera, sin sesión, puede postular como mentor", async () => {
   await assertSucceeds(setDoc(doc(env.unauthenticatedContext().firestore(), "mentores", "m1"), mentor()));
@@ -229,6 +230,18 @@ test("mentor sin consentimiento, con área inválida, estado distinto o campos e
   await assertFails(setDoc(doc(db, "mentores", "m3"), mentor({ extra: 1 })));
   await assertFails(setDoc(doc(db, "mentores", "m4"), mentor({ estado: "confirmado" })));
   await assertFails(setDoc(doc(db, "mentores", "m5"), mentor({ correo: "no-es-correo" })));
+  await assertFails(setDoc(doc(db, "mentores", "m6"), mentor({ trayectoria: "corta" })));
+  await assertFails(setDoc(doc(db, "mentores", "m7"), mentor({ anios: "20" })));
+  await assertFails(setDoc(doc(db, "mentores", "m8"), mentor({ rolesPrevios: [] })));
+  await assertFails(setDoc(doc(db, "mentores", "m9"), mentor({ disponibilidad: "presencial" })));
+});
+test("cualquiera puede postular como jurado indicando su disponibilidad; solo un admin lo lee", async () => {
+  const db = env.unauthenticatedContext().firestore();
+  await assertSucceeds(setDoc(doc(db, "jurados", "j1"), mentor({ disponibilidad: "presencial", referencias: "Ana Pérez, ana@empresa.pe" })));
+  await assertFails(setDoc(doc(db, "jurados", "j2"), mentor()));
+  await assertFails(setDoc(doc(db, "jurados", "j3"), mentor({ disponibilidad: "quizas" })));
+  await assertFails(getDoc(doc(db, "jurados", "j1")));
+  await assertSucceeds(getDoc(doc(env.authenticatedContext("adm", ADM).firestore(), "jurados", "j1")));
 });
 test("las postulaciones de mentores solo las lee un admin", async () => {
   await assertSucceeds(setDoc(doc(env.unauthenticatedContext().firestore(), "mentores", "m1"), mentor()));

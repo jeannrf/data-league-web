@@ -4,10 +4,10 @@ import Shell from "../components/Shell";
 import { useAuth } from "../lib/auth";
 import { db, firebaseConfigured } from "../lib/firebase";
 import { ADMIN_EMAIL, EDICION, eventos } from "../config";
-import { ESTADOS, ESTADOS_MENTOR, ESTADOS_SPONSOR, descargarXlsx, estadoTexto, fecha, filasPersonas, type Post, type MentorDoc, type SponsorDoc } from "../lib/admin";
+import { ESTADOS, ESTADOS_EXPERTO, ESTADOS_SPONSOR, descargarXlsx, estadoTexto, fecha, filasPersonas, type Post, type ExpertoDoc, type SponsorDoc } from "../lib/admin";
 import { correoConfigurado, enviarCorreoEstado, tieneCorreo } from "../lib/correo";
 import { tiposApoyo } from "../lib/sponsor";
-import { areasMentor } from "../lib/mentor";
+import { aniosExperiencia, areasMentor, coleccion, disponibilidades, rolesPrevios, type Rol } from "../lib/experto";
 import type { Inscripcion } from "../lib/eventos";
 
 /* ---------- mensaje largo truncado con "Ver más" ---------- */
@@ -268,33 +268,73 @@ function Sponsors({ items }: { items: SponsorDoc[] }) {
   );
 }
 
-/* ---------- mentores ---------- */
-function Mentores({ items }: { items: MentorDoc[] }) {
-  async function estado(id: string, v: string) { if (db) await updateDoc(doc(db, "mentores", id), { estado: v }); }
-  const area = (v: string) => areasMentor.find((t) => t.v === v)?.t ?? v;
+/* ---------- mentores y jurados ---------- */
+function Expertos({ rol, items }: { rol: Rol; items: ExpertoDoc[] }) {
+  const jurado = rol === "jurado";
+  const nombreRol = jurado ? "jurados" : "mentores";
+  async function estado(id: string, v: string) { if (db) await updateDoc(doc(db, coleccion[rol], id), { estado: v }); }
+  const txt = (l: readonly { v: string; t: string }[], v?: string) => (v ? l.find((o) => o.v === v)?.t ?? v : "");
+  const lista = (l: readonly { v: string; t: string }[], vs?: string[]) => (vs ?? []).map((v) => txt(l, v)).join(", ");
   async function exportar() {
-    await descargarXlsx(`mentores-${EDICION}.xlsx`, [["Nombre", "Correo", "Teléfono", "Ocupación", "Perfil", "Áreas", "Mensaje", "Estado", "Fecha"],
-      ...items.map((m) => [m.nombre, m.correo, m.telefono, m.ocupacion, m.perfil, m.areas.map(area).join(" / "), m.mensaje, m.estado, m.creadoEn ? m.creadoEn.toDate().toISOString() : ""])], "Mentores");
+    await descargarXlsx(`${nombreRol}-${EDICION}.xlsx`, [
+      ["Nombre", "Correo", "Teléfono", "Ocupación", "Perfil", "Años de experiencia", "Participó antes como", "Trayectoria", "Referencias", "Áreas", ...(jurado ? ["Disponibilidad"] : []), "Mensaje", "Estado", "Fecha"],
+      ...items.map((m) => [m.nombre, m.correo, m.telefono, m.ocupacion, m.perfil, txt(aniosExperiencia, m.anios), lista(rolesPrevios, m.rolesPrevios), m.trayectoria ?? "", m.referencias ?? "",
+        lista(areasMentor, m.areas), ...(jurado ? [txt(disponibilidades, m.disponibilidad)] : []), m.mensaje, m.estado, m.creadoEn ? m.creadoEn.toDate().toISOString() : ""]),
+    ], jurado ? "Jurados" : "Mentores");
   }
+  const sel = (m: ExpertoDoc) => (
+    <select className="adm-input" aria-label={`Estado de ${m.nombre}`} value={m.estado} onChange={(e) => void estado(m.id, e.target.value)}>{ESTADOS_EXPERTO.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}</select>
+  );
+  const exp = (m: ExpertoDoc) => [txt(aniosExperiencia, m.anios), lista(rolesPrevios, m.rolesPrevios)].filter(Boolean).join(" · ") || "—";
+  const vacio = `Todavía no hay postulaciones de ${nombreRol}.`;
   return (
     <div>
       <div className="adm-bar"><span className="text-soft">{items.length} postulación(es)</span><button type="button" className="btn btn-ghost adm-btn" onClick={() => void exportar()}>Exportar XLSX</button></div>
-      <div className="adm-scroll">
+
+      {/* Celular y tablet: una tarjeta por persona */}
+      <ul className="adm-cards lg:hidden">
+        {items.map((m) => (
+          <li key={m.id} className="adm-card">
+            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+              <b className="text-lg text-ink">{m.nombre}</b>
+              <span className="text-[0.85rem] text-muted">{fecha(m.creadoEn)}</span>
+            </div>
+            <p className="text-soft">{m.ocupacion}</p>
+            <p className="break-words"><a href={`mailto:${m.correo}`}>{m.correo}</a>{m.telefono && <span className="text-muted"> · {m.telefono}</span>}</p>
+            {m.perfil && <p className="break-words text-muted">{m.perfil}</p>}
+            <dl className="adm-dl">
+              <dt>Experiencia</dt><dd>{exp(m)}</dd>
+              <dt>Áreas</dt><dd>{lista(areasMentor, m.areas)}</dd>
+              {jurado && <><dt>Disponibilidad</dt><dd>{txt(disponibilidades, m.disponibilidad) || "—"}</dd></>}
+              <dt>Trayectoria</dt><dd className="adm-msg"><Mensaje texto={m.trayectoria ?? ""} /></dd>
+              <dt>Referencias</dt><dd className="adm-msg"><Mensaje texto={m.referencias ?? ""} /></dd>
+              <dt>Mensaje</dt><dd className="adm-msg"><Mensaje texto={m.mensaje} /></dd>
+            </dl>
+            {sel(m)}
+          </li>
+        ))}
+        {!items.length && <li className="py-8 text-center text-soft">{vacio}</li>}
+      </ul>
+
+      {/* Escritorio: tabla */}
+      <div className="adm-scroll hidden lg:block">
         <table className="adm-table">
-          <thead><tr><th>Nombre</th><th>Ocupación</th><th>Correo</th><th>Áreas</th><th>Mensaje</th><th>Estado</th><th>Fecha</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Ocupación</th><th>Experiencia</th><th>Trayectoria y referencias</th><th>Áreas</th>{jurado && <th>Disponibilidad</th>}<th>Mensaje</th><th>Estado</th><th>Fecha</th></tr></thead>
           <tbody>
             {items.map((m) => (
               <tr key={m.id}>
-                <td><b>{m.nombre}</b>{m.telefono && <><br /><span className="text-muted">{m.telefono}</span></>}</td>
-                <td>{m.ocupacion}{m.perfil && <><br /><span className="text-muted">{m.perfil}</span></>}</td>
-                <td><a href={`mailto:${m.correo}`}>{m.correo}</a></td>
-                <td>{m.areas.map(area).join(", ")}</td>
+                <td><b>{m.nombre}</b><br /><a href={`mailto:${m.correo}`}>{m.correo}</a>{m.telefono && <><br /><span className="text-muted">{m.telefono}</span></>}</td>
+                <td>{m.ocupacion}{m.perfil && <><br /><span className="break-all text-muted">{m.perfil}</span></>}</td>
+                <td className="min-w-[9rem]">{txt(aniosExperiencia, m.anios) || "—"}{m.rolesPrevios?.length ? <><br /><span className="text-muted">{lista(rolesPrevios, m.rolesPrevios)}</span></> : null}</td>
+                <td className="adm-msg"><Mensaje texto={m.trayectoria ?? ""} />{m.referencias && <div className="mt-2 border-t border-line pt-2"><span className="text-[0.8rem] font-extrabold uppercase tracking-wider text-muted">Referencias</span><Mensaje texto={m.referencias} /></div>}</td>
+                <td>{lista(areasMentor, m.areas)}</td>
+                {jurado && <td>{txt(disponibilidades, m.disponibilidad) || "—"}</td>}
                 <td className="adm-msg"><Mensaje texto={m.mensaje} /></td>
-                <td><select className="adm-input" aria-label={`Estado de ${m.nombre}`} value={m.estado} onChange={(e) => void estado(m.id, e.target.value)}>{ESTADOS_MENTOR.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}</select></td>
+                <td>{sel(m)}</td>
                 <td>{fecha(m.creadoEn)}</td>
               </tr>
             ))}
-            {!items.length && <tr><td colSpan={7} className="py-8 text-center text-soft">Todavía no hay postulaciones de mentores.</td></tr>}
+            {!items.length && <tr><td colSpan={jurado ? 9 : 8} className="py-8 text-center text-soft">{vacio}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -362,11 +402,12 @@ function Login() {
 /* ---------- página ---------- */
 export default function Admin() {
   const { user, loading, signOut } = useAuth();
-  const [tab, setTab] = useState<"post" | "spon" | "men" | "ev">("post");
+  const [tab, setTab] = useState<"post" | "spon" | "men" | "jur" | "ev">("post");
   const [insc, setInsc] = useState<Inscripcion[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [spons, setSpons] = useState<SponsorDoc[]>([]);
-  const [mentores, setMentores] = useState<MentorDoc[]>([]);
+  const [mentores, setMentores] = useState<ExpertoDoc[]>([]);
+  const [jurados, setJurados] = useState<ExpertoDoc[]>([]);
   const [error, setError] = useState("");
   // Esto solo decide qué se muestra; quien protege los datos son las reglas de Firestore.
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -380,8 +421,10 @@ export default function Admin() {
     const u3 = onSnapshot(query(collection(db, "inscripciones"), orderBy("creadoEn", "desc")),
       (s) => setInsc(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Inscripcion, "id">) }))), () => setError("No se pudieron cargar las inscripciones."));
     const u4 = onSnapshot(query(collection(db, "mentores"), orderBy("creadoEn", "desc")),
-      (s) => setMentores(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MentorDoc, "id">) }))), () => setError("No se pudieron cargar los mentores."));
-    return () => { u1(); u2(); u3(); u4(); };
+      (s) => setMentores(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ExpertoDoc, "id">) }))), () => setError("No se pudieron cargar los mentores."));
+    const u5 = onSnapshot(query(collection(db, "jurados"), orderBy("creadoEn", "desc")),
+      (s) => setJurados(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ExpertoDoc, "id">) }))), () => setError("No se pudieron cargar los jurados."));
+    return () => { u1(); u2(); u3(); u4(); u5(); };
   }, [isAdmin]);
 
   let body;
@@ -398,10 +441,11 @@ export default function Admin() {
         <button role="tab" aria-selected={tab === "post"} onClick={() => setTab("post")}>Postulaciones ({posts.length})</button>
         <button role="tab" aria-selected={tab === "spon"} onClick={() => setTab("spon")}>Sponsors ({spons.length})</button>
         <button role="tab" aria-selected={tab === "men"} onClick={() => setTab("men")}>Mentores ({mentores.length})</button>
+        <button role="tab" aria-selected={tab === "jur"} onClick={() => setTab("jur")}>Jurados ({jurados.length})</button>
         <button role="tab" aria-selected={tab === "ev"} onClick={() => setTab("ev")}>Jornadas ({insc.length})</button>
       </div>
       {error && <p className="err mb-4" role="alert">{error}</p>}
-      <div className="mt-6">{tab === "post" ? <Postulaciones posts={posts} /> : tab === "spon" ? <Sponsors items={spons} /> : tab === "men" ? <Mentores items={mentores} /> : <Jornadas items={insc} />}</div>
+      <div className="mt-6">{tab === "post" ? <Postulaciones posts={posts} /> : tab === "spon" ? <Sponsors items={spons} /> : tab === "men" ? <Expertos key="men" rol="mentor" items={mentores} /> : tab === "jur" ? <Expertos key="jur" rol="jurado" items={jurados} /> : <Jornadas items={insc} />}</div>
     </>
   );
 

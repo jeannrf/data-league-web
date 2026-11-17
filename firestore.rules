@@ -171,22 +171,35 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
-    // ---------- Mentores: cualquiera puede enviar una postulación; solo los admins la leen y la gestionan ----------
-    function validMentor(d) {
-      return d.keys().hasOnly(['edicion', 'nombre', 'correo', 'telefono', 'ocupacion', 'perfil', 'areas', 'mensaje', 'consentimientoDatos', 'estado', 'creadoEn'])
-        && d.edicion == '2026-uni' && d.estado == 'nuevo'
+    // ---------- Mentores y jurados: cualquiera puede enviar una postulación; solo los admins la leen y la gestionan ----------
+    function validExperto(d) {
+      return d.edicion == '2026-uni' && d.estado == 'nuevo'
         && text(d.nombre, 100) && text(d.ocupacion, 120)
         && emailRe(d.correo)
         && d.telefono is string && d.telefono.size() <= 20
         && d.perfil is string && d.perfil.size() <= 200
+        && d.anios in ['0-2', '2-5', '5-10', '10+']
+        && d.rolesPrevios is list && d.rolesPrevios.size() >= 1 && d.rolesPrevios.size() <= 6
+        && d.rolesPrevios.hasOnly(['mentor', 'jurado', 'ponente', 'organizador', 'docente', 'ninguno'])
+        && d.trayectoria is string && d.trayectoria.size() >= 30 && d.trayectoria.size() <= 1500
+        && d.referencias is string && d.referencias.size() <= 500
         && d.areas is list && d.areas.size() >= 1 && d.areas.size() <= 6
         && d.areas.hasOnly(['storytelling', 'ml', 'ia', 'gobierno', 'negocio', 'otro'])
         && d.mensaje is string && d.mensaje.size() <= 1000
         && d.consentimientoDatos == true
         && d.creadoEn == request.time;
     }
+    function camposExperto() {
+      return ['edicion', 'nombre', 'correo', 'telefono', 'ocupacion', 'perfil', 'anios', 'rolesPrevios', 'trayectoria', 'referencias', 'areas', 'mensaje', 'consentimientoDatos', 'estado', 'creadoEn'];
+    }
     match /mentores/{id} {
-      allow create: if validMentor(request.resource.data);
+      allow create: if request.resource.data.keys().hasOnly(camposExperto()) && validExperto(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+    match /jurados/{id} {
+      allow create: if request.resource.data.keys().hasOnly(camposExperto().concat(['disponibilidad']))
+        && validExperto(request.resource.data)
+        && request.resource.data.disponibilidad in ['presencial', 'virtual', 'por_confirmar'];
       allow read, update, delete: if isAdmin();
     }
 

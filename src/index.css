@@ -167,6 +167,8 @@ input[type="date"] { color-scheme: dark; }
 .chip input { position: absolute; opacity: 0; pointer-events: none; }
 .chip:hover { border-color: var(--color-accent); }
 .chip.on { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
+fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
+.field .chip input { width: 1px; height: 1px; min-height: 0; padding: 0; }
 .chip:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 3px; }
 .choice { display: block; cursor: pointer; border-top: 1px solid var(--color-line); }
 .choice:last-of-type { border-bottom: 1px solid var(--color-line); }
@@ -313,6 +315,7 @@ button.btn.btn-ghost { border: 2px solid var(--color-accent); }
 .auth-x:hover { color: var(--color-accent); }
 @media (prefers-reduced-motion: no-preference) { .auth-modal[open] { animation: menu-in 260ms var(--ease-out-expo); } }
 .area { width: 100%; min-height: 8rem; padding: 0.7rem 1rem; background: #0c1220; color: var(--color-ink); border: 2px solid var(--color-line); border-radius: 2px; font: inherit; font-stretch: 100%; resize: vertical; }
+.area-sm { min-height: 5.5rem; }
 .area:focus { outline: none; border-color: var(--color-accent); }
 
 /* ---------- Panel de administración (herramienta de trabajo: sobrio y denso) ---------- */
@@ -334,6 +337,13 @@ button.btn.btn-ghost { border: 2px solid var(--color-accent); }
 .adm-table input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--color-accent); }
 .adm-msg { max-width: 22rem; white-space: pre-wrap; color: var(--color-soft); }
 .adm-msg-txt { margin: 0; }
+.adm-cards { display: grid; gap: 0.9rem; margin: 0; padding: 0; list-style: none; }
+.adm-card { display: grid; gap: 0.35rem; padding: 1.1rem 1rem; border: 1px solid var(--color-line); background: #0c1220; color: var(--color-ink); min-width: 0; }
+.adm-card .adm-input { margin-top: 0.6rem; width: 100%; }
+.adm-dl { display: grid; gap: 0.15rem; margin: 0.5rem 0 0; }
+.adm-dl dt { margin-top: 0.55rem; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); }
+.adm-dl dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.adm-card .adm-msg { max-width: none; }
 .adm-msg-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
 .adm-msg-more { margin-top: 0.35rem; padding: 0; background: none; border: 0; color: var(--color-accent); font: inherit; font-size: 0.85rem; font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .adm-msg-more:hover { color: var(--color-ink); }
@@ -376,10 +386,16 @@ button.btn.btn-ghost { border: 2px solid var(--color-accent); }
 @media (min-width: 640px) { .cd-cell { min-width: 5.5rem; padding-right: 1.5rem; margin-right: 0.75rem; } }
 
 @media (max-width: 400px) { .btn { padding: 0 1.1rem; } }
-/* Hero en celular: «Sé mentor» y «Sé sponsor» más bajos y en una fila; «Postula» va abajo, en su propia fila y a la izquierda. */
+/* Hero: «Sé mentor», «Sé jurado» y «Sé sponsor» van juntos. En celular, en una fila de tres columnas iguales y más bajos;
+   «Postula» va abajo, en su propia fila y a la izquierda. */
+.hero-secs { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 @media (max-width: 639px) {
-  .hero-sec { min-height: 2.75rem; padding: 0 1.1rem; font-size: 0.85rem; }
+  .hero-secs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; width: 100%; }
+  .hero-sec { min-height: 2.75rem; padding: 0 0.4rem; font-size: 0.78rem; letter-spacing: 0.04em; line-height: 1.15; }
 }
+@media (max-width: 359px) { .hero-sec { padding: 0 0.25rem; font-size: 0.66rem; letter-spacing: 0.02em; white-space: nowrap; } }
+/* Tablet y laptop angosta: los tres siempre en una fila, un poco más compactos. */
+@media (min-width: 640px) and (max-width: 1279px) { .hero-secs { flex-wrap: nowrap; } .hero-sec { padding: 0 1rem; font-size: 0.85rem; } }
 
 /* ---------- Jornadas virtuales (estilo agenda) ---------- */
 .evento { display: grid; gap: 1rem 2rem; padding: 1.75rem 0; border-top: 1px solid var(--color-line); align-items: center; }

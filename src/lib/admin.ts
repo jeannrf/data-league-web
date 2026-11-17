@@ -11,8 +11,10 @@ export type SponsorDoc = {
   id: string; organizacion: string; contacto: string; cargo: string; correo: string; telefono: string;
   tipoApoyo: string[]; mensaje: string; estado: string; creadoEn?: Timestamp;
 };
-export type MentorDoc = {
+/** Mentores y jurados. Los campos de trayectoria pueden faltar en postulaciones enviadas antes de que existieran. */
+export type ExpertoDoc = {
   id: string; nombre: string; correo: string; telefono: string; ocupacion: string; perfil: string;
+  anios?: string; rolesPrevios?: string[]; trayectoria?: string; referencias?: string; disponibilidad?: string;
   areas: string[]; mensaje: string; estado: string; creadoEn?: Timestamp;
 };
 
@@ -25,7 +27,7 @@ const OTROS = [{ v: "retirada", t: "Retirada" }, { v: "valida", t: "Aprobada" },
 export const ESTADOS_SPONSOR = [
   { v: "nuevo", t: "Nuevo" }, { v: "contactado", t: "Contactado" }, { v: "confirmado", t: "Confirmado" }, { v: "descartado", t: "Descartado" },
 ] as const;
-export const ESTADOS_MENTOR = [
+export const ESTADOS_EXPERTO = [
   { v: "nuevo", t: "Nuevo" }, { v: "contactado", t: "Contactado" }, { v: "confirmado", t: "Confirmado" }, { v: "descartado", t: "Descartado" },
 ] as const;
 export const estadoTexto = (v: string) => [...ESTADOS, ...OTROS].find((e) => e.v === v)?.t ?? v;
