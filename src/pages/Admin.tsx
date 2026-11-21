@@ -524,5 +524,5 @@ export default function Admin() {
     </>
   );
 
-  return <Shell volver={false}><div className="wrap py-10 md:py-14">{body}</div></Shell>;
+  return <Shell><div className="wrap py-10 md:py-14">{body}</div></Shell>;
 }

@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Shell from "../components/Shell";
@@ -76,7 +75,6 @@ export default function Experto({ rol }: { rol: Rol }) {
           <div className="max-w-2xl">
             <h1 className="title h-xl">¡Gracias!</h1>
             <p className="mt-6 text-xl text-ink">{t.gracias}</p>
-            <Link to="/" className="btn btn-ghost mt-10 no-underline">Volver al inicio</Link>
           </div>
         ) : (
           <>

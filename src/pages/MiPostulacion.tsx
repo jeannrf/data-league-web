@@ -98,7 +98,6 @@ export default function MiPostulacion() {
           </>
         )}
         <div className="mt-12 flex flex-wrap md:mt-4 items-center gap-6">
-          <Link to="/" className="btn btn-ghost btn-sm no-underline">Volver al inicio</Link>
           {post?.estado === "retirada" && <Link to="/postular" className="btn btn-sm no-underline">Postular de nuevo</Link>}
           {post && esEditable(post.estado) && !postulacionCerrada() && <Link to="/postular?editar" className="btn btn-sm no-underline">Editar mi postulación</Link>}
           {post && retirable(post.estado) && !postulacionCerrada() && <button className="link-btn" onClick={() => void retirar()}>Retirar mi postulación</button>}

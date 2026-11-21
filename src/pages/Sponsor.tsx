@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Shell from "../components/Shell";
@@ -40,7 +39,6 @@ export default function Sponsor() {
           <div className="max-w-2xl">
             <h1 className="title h-xl">¡Gracias!</h1>
             <p className="mt-6 text-xl text-ink">Recibimos tu solicitud. El equipo organizador te escribirá al correo que dejaste para conversar cómo participar en Data League 2026.</p>
-            <Link to="/" className="btn btn-ghost mt-10 no-underline">Volver al inicio</Link>
           </div>
         ) : (
           <>

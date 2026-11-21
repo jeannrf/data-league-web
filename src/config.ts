@@ -68,7 +68,7 @@ export const aliados = {
     { nombre: "Unicode", logo: "/aliados/unicode.png", enlace: "https://www.instagram.com/cc.unicode/" },
     { nombre: "Centro Cultural Luis Felipe de las Casas", logo: "/aliados/cclfc-uni.png", enlace: "https://www.facebook.com/CCLFC.FIEECS/" },
     { nombre: "DSC PUCP", logo: "/aliados/dsc-pucp.png", enlace: "https://www.instagram.com/dsc.pucp/" },
-    { nombre: "IEEE CIS UNMSM", logo: "/aliados/ieee-cis-unmsm.png", enlace: "https://www.instagram.com/ieee.cis.unmsm/" },
+    { nombre: "IEEE CIS UNMSM", logo: "/aliados/ieee-cis-unmsm.png", enlace: "https://www.instagram.com/ieeecisunmsm/" },
     { nombre: "IEEE WIE USIL", logo: "/aliados/ieee-wie-usil.png", enlace: "https://www.instagram.com/wie.ieee.usil/" },
     { nombre: "Lead UP", logo: "/aliados/lead-up.png", enlace: "https://www.instagram.com/lead.upacifico/" },
     { nombre: "Datea+", logo: "/aliados/datea-mas.png", enlace: "https://www.instagram.com/dateamas/" },
