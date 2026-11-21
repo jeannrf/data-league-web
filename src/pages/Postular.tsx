@@ -37,7 +37,17 @@ export default function Postular() {
     resolver: zodResolver(postulacionSchema), defaultValues: { nombre: "", celular: "", nombreEquipo: "", integrantes: [], correoLider: "" } as unknown as PostulacionForm, mode: "onTouched",
   });
   const { register, control, handleSubmit, watch, formState: { errors } } = methods;
-  const { fields, append, remove } = useFieldArray({ control, name: "integrantes" });
+  const { fields, append, remove, replace } = useFieldArray({ control, name: "integrantes" });
+  // Solo o con equipo. Si ya hay integrantes guardados (borrador o edición), se abre en «equipo».
+  const [modo, setModo] = useState<"solo" | "equipo" | null>(null);
+  useEffect(() => { if (fields.length > 0) setModo("equipo"); }, [fields.length]);
+  function elegirModo(m: "solo" | "equipo") {
+    if (m === "solo" && fields.some((_, i) => Object.values(methods.getValues(`integrantes.${i}`) ?? {}).some((x) => String(x).trim()))
+      && !window.confirm("Se borrarán los datos de tus compañeros. ¿Inscribirte solo?")) return;
+    if (m === "solo") { replace([]); methods.setValue("nombreEquipo", ""); }
+    if (m === "equipo" && fields.length === 0) append({ nombre: "", celular: "", correo: "" }, { shouldFocus: false });
+    setModo(m);
+  }
 
   // Si ya postuló, va a su área. Al editar, se rellena el formulario con lo guardado (solo si aún se puede editar).
   useEffect(() => {
@@ -50,6 +60,7 @@ export default function Postular() {
           correoLider: (user.email ?? "").toLowerCase(), nombre: p.nombre, celular: p.whatsapp, nombreEquipo: p.nombreEquipo ?? "",
           integrantes: (p.integrantes ?? []).map((m) => ({ nombre: m.nombre, celular: m.whatsapp, correo: m.correo })), acepta: true,
         } as PostulacionForm);
+        setModo((p.integrantes ?? []).length ? "equipo" : "solo");
         setEditando(true);
         setChecking(false);
       }).catch(() => navigate("/mi-postulacion", { replace: true }));
@@ -124,45 +135,56 @@ export default function Postular() {
                 <p className="mt-4 text-soft">Sesión: <b className="text-ink">{user.email}</b> · <button type="button" className="link-btn link-danger" onClick={() => void signOut()}>Cerrar sesión</button> · Cierra el 29 de noviembre, 23:59</p>
 
                 <form className="mt-10 grid gap-12" noValidate onSubmit={handleSubmit(submit)}>
-                  <section aria-labelledby="t-tus-datos">
-                    <h2 id="t-tus-datos" className="title text-3xl">Tus datos</h2>
-                    <div className="mt-6 grid gap-6 md:grid-cols-3">
-                      <Field label="Nombre completo" name="nombre"><input autoComplete="name" {...aria("nombre")} {...register("nombre")} /></Field>
-                      <Field label="Celular (WhatsApp)" name="celular"><input type="tel" inputMode="tel" autoComplete="tel" placeholder="987 654 321 o +57 300…" {...aria("celular")} {...register("celular")} /></Field>
-                      <div className="field">
-                        <label htmlFor="correo-lider">Correo de Google</label>
-                        <input id="correo-lider" value={user.email ?? ""} readOnly aria-readonly="true" className="opacity-70" />
-                      </div>
+                  <fieldset className="grid gap-4">
+                    <legend className="title text-3xl">¿Cómo te inscribes?</legend>
+                    <div className="mt-4">
+                      <label className="choice">
+                        <input type="radio" name="modo" checked={modo === "solo"} onChange={() => elegirModo("solo")} />
+                        <span className="choice-body"><span className="choice-title">Solo</span><span className="choice-text">Participas tú solo. Solo necesitamos tus datos.</span></span>
+                      </label>
+                      <label className="choice">
+                        <input type="radio" name="modo" checked={modo === "equipo"} onChange={() => elegirModo("equipo")} />
+                        <span className="choice-body"><span className="choice-title">Con equipo</span><span className="choice-text">De 2 a 4 participantes contándote. Tus compañeros no necesitan cuenta.</span></span>
+                      </label>
                     </div>
-                  </section>
+                  </fieldset>
 
-                  <section aria-labelledby="t-equipo">
-                    <h2 id="t-equipo" className="title text-3xl">Tu equipo</h2>
-                    <p className="measure mt-3 text-ink">Tú eres la persona 1. ¿Vas con equipo? Agrega a las <b>otras</b> personas, de 1 a 3, con sus propios datos. No necesitan cuenta. Si vas solo, sáltate esto.</p>
-                    <div className="mt-6 grid gap-8">
-                      {fields.length > 0 && (
+                  {modo && (
+                    <section aria-labelledby="t-datos" className="grid gap-8">
+                      <h2 id="t-datos" className="title text-3xl">{modo === "solo" ? "Tus datos" : "Tu equipo"}</h2>
+                      {modo === "equipo" && (
                         <div className="max-w-xl">
                           <Field label="Nombre del equipo" name="nombreEquipo"><input autoComplete="off" maxLength={60} {...aria("nombreEquipo")} {...register("nombreEquipo")} /></Field>
                         </div>
                       )}
-                      {fields.map((f, i) => (
+                      <fieldset className={modo === "equipo" ? "member" : "grid gap-6"}>
+                        {modo === "equipo" && <legend className="title text-2xl">Participante 1: tú</legend>}
+                        <div className="grid gap-6 md:grid-cols-3">
+                          <Field label="Nombre completo" name="nombre"><input autoComplete="name" {...aria("nombre")} {...register("nombre")} /></Field>
+                          <Field label="Celular (WhatsApp)" name="celular"><input type="tel" inputMode="tel" autoComplete="tel" placeholder="987 654 321 o +57 300…" {...aria("celular")} {...register("celular")} /></Field>
+                          <div className="field">
+                            <label htmlFor="correo-lider">Correo de Google</label>
+                            <input id="correo-lider" value={user.email ?? ""} readOnly aria-readonly="true" className="opacity-70" />
+                          </div>
+                        </div>
+                      </fieldset>
+                      {modo === "equipo" && fields.map((f, i) => (
                         <fieldset key={f.id} className="member">
-                          <legend className="title text-2xl">Persona {i + 2} de tu equipo</legend>
-                          <p className="-mt-3 text-soft">Datos de otra persona, no los tuyos.</p>
+                          <legend className="title text-2xl">Participante {i + 2}</legend>
                           <div className="grid gap-6 md:grid-cols-3">
                             <Field label="Nombre completo" name={`integrantes.${i}.nombre`}><input autoComplete="off" {...aria(`integrantes.${i}.nombre`)} {...register(`integrantes.${i}.nombre`)} /></Field>
                             <Field label="Celular" name={`integrantes.${i}.celular`}><input type="tel" inputMode="tel" autoComplete="off" {...aria(`integrantes.${i}.celular`)} {...register(`integrantes.${i}.celular`)} /></Field>
                             <Field label="Correo" name={`integrantes.${i}.correo`}><input type="email" autoComplete="off" {...aria(`integrantes.${i}.correo`)} {...register(`integrantes.${i}.correo`)} /></Field>
                           </div>
-                          <button type="button" className="link-btn" onClick={() => remove(i)}>Quitar a esta persona</button>
+                          {fields.length > 1 && <button type="button" className="link-btn w-fit" onClick={() => remove(i)}>Quitar participante {i + 2}</button>}
                         </fieldset>
                       ))}
-                      {fields.length < 3 && (
-                        <button type="button" className="btn btn-ghost w-fit" onClick={() => append({ nombre: "", celular: "", correo: "" })}>{fields.length === 0 ? "Agregar integrante" : "Agregar otro integrante"}</button>
+                      {modo === "equipo" && fields.length < 3 && (
+                        <button type="button" className="btn btn-ghost w-fit" onClick={() => append({ nombre: "", celular: "", correo: "" })}>+ Añadir participante {fields.length + 2}</button>
                       )}
                       {intsErr?.message && <p className="err" role="alert">{intsErr.message}</p>}
-                    </div>
-                  </section>
+                    </section>
+                  )}
 
                   <div>
                     <label className="check">
@@ -173,7 +195,7 @@ export default function Postular() {
                   </div>
 
                   {formError && <p className="err text-lg" role="alert">{formError}</p>}
-                  <div className="flex flex-wrap items-center gap-4"><button type="submit" className="btn" disabled={submitting}>{submitting ? (editando ? "Guardando…" : "Enviando…") : editando ? "Guardar cambios" : "Enviar postulación"}</button>
+                  <div className="flex flex-wrap items-center gap-4"><button type="submit" className="btn" disabled={submitting || !modo}>{submitting ? (editando ? "Guardando…" : "Enviando…") : editando ? "Guardar cambios" : "Enviar postulación"}</button>
                     {editando && <Link to="/mi-postulacion" className="btn btn-ghost no-underline">Cancelar</Link>}</div>
                 </form>
               </div>

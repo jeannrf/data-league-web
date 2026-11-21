@@ -82,6 +82,16 @@ test("una postulación rechazada por el equipo organizador no se puede reemplaza
   await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), "postulaciones", "u1"), { estado: "rechazada" }); });
   await assertFails(submit("u1", "lider@correo.pe", base(), equipoIdx));
 });
+test("una postulación rechazada no se puede retirar (ni volver a postular así)", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), equipoIdx));
+  await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), "postulaciones", "u1"), { estado: "rechazada" }); });
+  await assertFails(retirar("u1", "lider@correo.pe", ["lider@correo.pe", "m1@correo.pe"]));
+});
+test("retirar funciona aunque falte el índice de algún correo (se borran solo los que existen)", async () => {
+  await assertSucceeds(submit("u1", "lider@correo.pe", base(), leaderIdx.concat({ id: "m1@correo.pe", rol: "integrante" })));
+  await env.withSecurityRulesDisabled(async (c) => { await deleteDoc(doc(c.firestore(), "correosEdicion", "2026-uni_m1@correo.pe")); });
+  await assertSucceeds(retirar("u1", "lider@correo.pe", ["lider@correo.pe"]));
+});
 test("equipo de 1 persona (sin integrantes) se rechaza", async () => {
   await assertFails(submit("u1", "lider@correo.pe", base({ integrantes: [] }), leaderIdx));
 });

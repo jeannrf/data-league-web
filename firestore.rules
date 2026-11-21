@@ -104,7 +104,9 @@ service cloud.firestore {
         && request.resource.data.editadoEn == request.time;
 
       // El postulante puede retirar su postulación.
+      // No se puede retirar una rechazada: retirarla abriría la puerta a volver a postular.
       allow update: if signedIn() && request.auth.uid == uid && beforeDeadline()
+        && !(resource.data.estado in ['retirada', 'rechazada', 'no_seleccionada'])
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn'])
         && request.resource.data.estado == 'retirada'
         && request.resource.data.actualizadoEn == request.time;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation } from "react-router";
-import { doc, getDoc, serverTimestamp, writeBatch, type Timestamp } from "firebase/firestore";
+import { doc, getDoc, runTransaction, serverTimestamp, type Timestamp } from "firebase/firestore";
 import { EDICION } from "../config";
 import { useAuth } from "../lib/auth";
 import { db, firebaseConfigured } from "../lib/firebase";
@@ -24,6 +24,9 @@ const estados: Record<string, { t: string; d: string }> = {
   no_seleccionada: { t: "Rechazada", d: "En esta ocasión tu postulación no fue aprobada. Gracias por participar." },
 };
 
+// Una postulación rechazada no se retira: retirarla permitiría volver a postular.
+const retirable = (estado: string) => !["retirada", "rechazada", "no_seleccionada"].includes(estado);
+
 export default function MiPostulacion() {
   const { user, loading, signOut } = useAuth();
   const location = useLocation();
@@ -42,13 +45,18 @@ export default function MiPostulacion() {
     if (!user || !db) return;
     if (!window.confirm("¿Seguro que quieres retirar tu postulación? Podrás volver a postular mientras siga abierto el plazo.")) return;
     try {
-      // Se libera el correo de cada persona del equipo para poder volver a postular.
-      const b = writeBatch(db);
-      b.update(doc(db, "postulaciones", user.uid), { estado: "retirada", actualizadoEn: serverTimestamp() });
-      for (const c of [user.email ?? "", ...(post?.integrantes ?? []).map((m) => m.correo)]) b.delete(doc(db, "correosEdicion", `${EDICION}_${c.toLowerCase()}`));
-      await b.commit();
+      // Se libera el correo de cada persona del equipo para poder volver a postular. Solo se borran los índices
+      // que existen y son de esta cuenta: borrar uno inexistente hace que Firestore rechace toda la operación.
+      const firestore = db;
+      await runTransaction(firestore, async (tx) => {
+        const correos = [...new Set([user.email ?? "", ...(post?.integrantes ?? []).map((m) => m.correo)].map((c) => c.toLowerCase()).filter(Boolean))];
+        const refs = correos.map((c) => doc(firestore, "correosEdicion", `${EDICION}_${c}`));
+        const snaps = await Promise.all(refs.map((r) => tx.get(r)));
+        tx.update(doc(firestore, "postulaciones", user.uid), { estado: "retirada", actualizadoEn: serverTimestamp() });
+        snaps.forEach((s, i) => { if (s.exists() && s.data().uid === user.uid) tx.delete(refs[i]); });
+      });
       setPost((p) => (p ? { ...p, estado: "retirada" } : p));
-    } catch { setError("No pudimos retirar la postulación. Escríbenos si el problema continúa."); }
+    } catch (e) { console.error("retirar:", e); setError("No pudimos retirar la postulación. Escríbenos si el problema continúa."); }
   }
 
   if (!firebaseConfigured) return <Shell><div className="wrap py-16 text-xl text-ink">Falta configurar Firebase (ver <code>.env.example</code>).</div></Shell>;
@@ -86,14 +94,14 @@ export default function MiPostulacion() {
             </dl>
             {post && esEditable(post.estado) && !postulacionCerrada()
               ? <p className="measure mt-8 text-muted md:mt-3 md:text-sm">Puedes editar tus datos y tu equipo hasta el cierre de postulaciones.</p>
-              : post.estado !== "retirada" && <p className="measure mt-8 text-muted md:mt-3 md:text-sm">Si necesitas corregir algún dato, escríbenos.</p>}
+              : retirable(post.estado) && <p className="measure mt-8 text-muted md:mt-3 md:text-sm">Si necesitas corregir algún dato, escríbenos.</p>}
           </>
         )}
         <div className="mt-12 flex flex-wrap md:mt-4 items-center gap-6">
           <Link to="/" className="btn btn-ghost btn-sm no-underline">Volver al inicio</Link>
           {post?.estado === "retirada" && <Link to="/postular" className="btn btn-sm no-underline">Postular de nuevo</Link>}
           {post && esEditable(post.estado) && !postulacionCerrada() && <Link to="/postular?editar" className="btn btn-sm no-underline">Editar mi postulación</Link>}
-          {post && post.estado !== "retirada" && <button className="link-btn" onClick={() => void retirar()}>Retirar mi postulación</button>}
+          {post && retirable(post.estado) && !postulacionCerrada() && <button className="link-btn" onClick={() => void retirar()}>Retirar mi postulación</button>}
           <button className="link-btn link-danger" onClick={() => void signOut()}>Cerrar sesión</button>
         </div>
       </div>
