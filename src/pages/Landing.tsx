@@ -281,8 +281,8 @@ function Impact() {
 
 function Prizes() {
   const puestos = [
-    { p: "1.er puesto", n: 600, color: "text-accent", big: true },
-    { p: "2.º puesto", n: 400, color: "text-ink", big: false },
+    { p: "1.er puesto", n: 500, color: "text-accent", big: true },
+    { p: "2.º puesto", n: 300, color: "text-ink", big: false },
     { p: "3.er puesto", n: 200, color: "text-primary-text", big: false },
   ];
   return (

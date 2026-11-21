@@ -72,6 +72,8 @@ export const aliados = {
     { nombre: "IEEE WIE USIL", logo: "/aliados/ieee-wie-usil.png", enlace: "https://www.instagram.com/wie.ieee.usil/" },
     { nombre: "Lead UP", logo: "/aliados/lead-up.png", enlace: "https://www.instagram.com/lead.upacifico/" },
     { nombre: "Datea+", logo: "/aliados/datea-mas.png", enlace: "https://www.instagram.com/dateamas/" },
+    { nombre: "Sol", logo: "/aliados/sol.png" },
+    { nombre: "Spin Out", logo: "/aliados/spin-out.png", enlace: "https://www.linkedin.com/company/spinoutworld/" },
   ],
 };
 
@@ -81,5 +83,5 @@ export const faq = [
   { p: "¿Cómo se arma un equipo?", r: "Los equipos son de 2 a 4 personas. Solo quien lidera el equipo crea una cuenta y registra a las demás personas con sus nombres, correo y WhatsApp." },
   { p: "¿Hasta cuándo puedo postular?", r: "Hasta el 29 de noviembre de 2026 a las 23:59, hora de Perú. Hasta esa fecha también puedes editar tu postulación." },
   { p: "¿Cómo funciona la final?", r: "La final es presencial, el 5 de diciembre de 2026 en la Universidad Nacional de Ingeniería (UNI), en Lima, con unas 120 personas. Los criterios para llegar a la final se publicarán próximamente." },
-  { p: "¿Qué premios hay?", r: "El primer puesto gana S/ 600, el segundo S/ 400 y el tercero S/ 200. Además, nuestros aliados entregarán becas a los equipos destacados." },
+  { p: "¿Qué premios hay?", r: "El primer puesto gana S/ 500, el segundo S/ 300 y el tercero S/ 200. Además, nuestros aliados entregarán becas a los equipos destacados." },
 ];
