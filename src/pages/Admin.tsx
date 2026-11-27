@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { arrayUnion, collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import Shell from "../components/Shell";
-import { useAuth } from "../lib/auth";
-import { db, firebaseConfigured } from "../lib/firebase";
-import { ADMIN_EMAIL, EDICION, eventos } from "../config";
+// El panel usa su propia sesión y su propia conexión (adminDb): la cuenta personal del navegador no cambia.
+import { adminDb as db, firebaseConfigured } from "../lib/firebase";
+import { entrarAdmin, salirAdmin, useAdminSession } from "../lib/adminSession";
+import { EDICION, eventos, type Jornada } from "../config";
 import { ESTADOS, ESTADOS_EXPERTO, ESTADOS_SPONSOR, descargarXlsx, estadoTexto, fecha, filasPersonas, type Post, type ExpertoDoc, type SponsorDoc } from "../lib/admin";
-import { correoConfigurado, enviarCorreoEstado, tieneCorreo } from "../lib/correo";
+import { avisoBase, correoConfigurado, enviarAviso, enviarCorreoEstado, personalizar, tieneCorreo } from "../lib/correo";
 import { tiposApoyo } from "../lib/sponsor";
 import { aniosExperiencia, areasMentor, coleccion, disponibilidades, rolesPrevios, type Rol } from "../lib/experto";
 import type { Inscripcion } from "../lib/eventos";
@@ -97,7 +98,7 @@ function CambioEstado({ items, nuevo, onClose, onDone }: { items: Post[]; nuevo:
 
 /* ---------- ficha de una postulación ---------- */
 function Ficha({ p, onClose, onCambiar }: { p: Post; onClose: () => void; onCambiar: (nuevo: string) => void }) {
-  const { user } = useAuth();
+  const { user } = useAdminSession();
   const ref = useRef<HTMLDialogElement>(null);
   const [notas, setNotas] = useState("");
   const [msg, setMsg] = useState("");
@@ -377,10 +378,118 @@ function Expertos({ rol, items }: { rol: Rol; items: ExpertoDoc[] }) {
   );
 }
 
+/* ---------- aviso por correo a los inscritos de una jornada ---------- */
+function AvisoJornada({ ev, items, onClose, onDone }: { ev: Jornada & { id: string }; items: Inscripcion[]; onClose: () => void; onDone: (msg: string) => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const base = useMemo(() => avisoBase(ev, eventos.findIndex((e) => e.id === ev.id) + 1), [ev]);
+  const [asunto, setAsunto] = useState(base.subject);
+  const [mensaje, setMensaje] = useState(base.message);
+  const [conFlyer, setConFlyer] = useState(Boolean(ev.flyer));
+  const [omitir, setOmitir] = useState(true);
+  const [prueba, setPrueba] = useState("");
+  const [estado, setEstado] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { ref.current?.showModal(); }, []);
+
+  const clave = asunto.trim();
+  // Una persona puede figurar dos veces si cambió de cuenta; se envía una vez por correo.
+  const destinos = useMemo(() => {
+    const vistos = new Set<string>();
+    return items.filter((i) => {
+      if (!i.correo || vistos.has(i.correo) || (omitir && i.avisos?.includes(clave))) return false;
+      vistos.add(i.correo); return true;
+    });
+  }, [items, omitir, clave]);
+  const yaAvisados = items.filter((i) => i.avisos?.includes(clave)).length;
+  const listo = Boolean(clave && mensaje.trim()) && correoConfigurado && !busy;
+  const flyer = conFlyer ? ev.flyer : undefined;
+
+  async function probar() {
+    if (!/^\S+@\S+\.\S+$/.test(prueba.trim())) { setEstado("Escribe un correo válido para la prueba."); return; }
+    setBusy(true); setEstado("Enviando prueba…");
+    const err = await enviarAviso({ correo: prueba.trim(), nombre: "Prueba" }, clave, mensaje, flyer);
+    setEstado(err ? `No se pudo enviar la prueba: ${err}` : `Prueba enviada a ${prueba.trim()}. Revisa la bandeja (y spam).`);
+    setBusy(false);
+  }
+
+  async function enviarTodos() {
+    if (!db || !destinos.length) return;
+    if (!window.confirm(destinos.length === 1 ? `¿Enviar el correo «${clave}» a ${destinos[0].correo}?` : `¿Enviar el correo «${clave}» a ${destinos.length} persona(s)?`)) return;
+    const firestore = db;
+    setBusy(true);
+    let ok = 0; const fallos: string[] = [];
+    for (const [n, i] of destinos.entries()) {
+      setEstado(`Enviando… ${n + 1} de ${destinos.length}`);
+      const err = await enviarAviso(i, clave, mensaje, flyer);
+      if (err) fallos.push(`${i.correo} (${err})`);
+      else { ok++; await updateDoc(doc(firestore, "inscripciones", i.id), { avisos: arrayUnion(clave) }).catch(() => undefined); }
+      if (n < destinos.length - 1) await new Promise((r) => setTimeout(r, 700));   // el plan gratuito de EmailJS limita la velocidad
+    }
+    onDone(`Aviso «${clave}»: ${ok} correo(s) enviado(s)${fallos.length ? `. No se pudieron enviar ${fallos.length}: ${fallos.join("; ")}` : "."}`);
+    setBusy(false);
+    onClose();
+  }
+
+  return (
+    <dialog ref={ref} className="ficha" aria-labelledby="av-t" onCancel={(e) => { if (busy) e.preventDefault(); }} onClose={onClose} onClick={(e) => { if (e.target === ref.current && !busy) onClose(); }}>
+      <div className="ficha-box">
+        <button type="button" className="auth-x" aria-label="Cerrar" disabled={busy} onClick={onClose}>×</button>
+        <h2 id="av-t" className="title text-3xl">Correo a inscritos</h2>
+        <p className="mt-2 text-ink">{ev.dia} {ev.mes} · {ev.tema}</p>
+        <p className="mt-1 text-soft">{items.length === 1 ? <>Solo a <b className="text-ink">{items[0].nombre}</b> ({items[0].correo})</> : `A todos los inscritos de la jornada (${items.length})`}</p>
+        {!correoConfigurado && <p className="err mt-4">Los correos no están configurados (EmailJS). Mira docs/firebase-setup.md.</p>}
+
+        <div className="mt-6 grid gap-5">
+          <div className="field">
+            <label htmlFor="av-asunto">Asunto</label>
+            <input id="av-asunto" className="adm-input" value={asunto} maxLength={150} disabled={busy} onChange={(e) => setAsunto(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="av-msg">Mensaje</label>
+            <p className="hint" id="av-hint">{"{nombre}"} se cambia por el primer nombre de cada persona. Los enlaces quedan clicables. La firma y el contacto se agregan solos.</p>
+            <textarea id="av-msg" className="area" rows={12} aria-describedby="av-hint" value={mensaje} disabled={busy} onChange={(e) => setMensaje(e.target.value)} />
+          </div>
+          {ev.flyer && (
+            <div className="grid gap-2">
+              <label className="check"><input type="checkbox" checked={conFlyer} disabled={busy} onChange={(e) => setConFlyer(e.target.checked)} /><span>Incluir el flyer al inicio del correo</span></label>
+              {conFlyer && <img src={ev.flyer} alt="Flyer que se incluirá" className="w-32 rounded-md" />}
+              {conFlyer && <p className="text-[0.9rem] text-muted">La imagen se carga desde el sitio publicado: debe estar desplegada para que se vea en el correo.</p>}
+            </div>
+          )}
+          <label className="check"><input type="checkbox" checked={omitir} disabled={busy} onChange={(e) => setOmitir(e.target.checked)} /><span>No reenviar a quienes ya recibieron un correo con este asunto{yaAvisados ? ` (${yaAvisados})` : ""}</span></label>
+        </div>
+
+        <details className="mt-5">
+          <summary className="cursor-pointer font-bold text-ink">Vista previa (primera persona)</summary>
+          <p className="mt-2 whitespace-pre-wrap text-soft">{personalizar(mensaje, destinos[0]?.nombre ?? items[0]?.nombre ?? "")}</p>
+        </details>
+
+        <div className="mt-6 grid gap-2">
+          <label htmlFor="av-prueba" className="font-bold text-ink">Enviarme una prueba primero</label>
+          <div className="flex flex-wrap gap-3">
+            <input id="av-prueba" type="email" className="adm-input min-w-0 flex-1" placeholder="tu-correo@ejemplo.com" value={prueba} disabled={busy} onChange={(e) => setPrueba(e.target.value)} />
+            <button type="button" className="btn btn-ghost adm-btn" disabled={!listo || !prueba.trim()} onClick={() => void probar()}>Enviar prueba</button>
+          </div>
+        </div>
+
+        {estado && <p role="status" className="mt-4 text-soft">{estado}</p>}
+        <p className="mt-4 text-[0.9rem] text-muted">Se enviará un correo por persona: {destinos.length}. El plan gratuito de EmailJS permite 200 correos al mes en total.</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button type="button" className="btn" disabled={!listo || !destinos.length} onClick={() => void enviarTodos()}>{busy ? "Enviando…" : destinos.length === 1 && items.length === 1 ? `Enviar a ${destinos[0].correo}` : `Enviar a ${destinos.length} inscrito(s)`}</button>
+          <button type="button" className="btn btn-ghost" disabled={busy} onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </dialog>
+  );
+}
+
 /* ---------- inscripciones a las jornadas virtuales ---------- */
 function Jornadas({ items }: { items: Inscripcion[] }) {
   const [ev, setEv] = useState("todas");
+  const [aviso, setAviso] = useState<Inscripcion[] | null>(null);
+  const [msg, setMsg] = useState("");
   const todas = ev === "todas";
+  const jornada = eventos.find((e) => e.id === ev);
   const lista = items.filter((i) => i.evento === ev);
   const nombreEv = (id: string) => eventos.find((e) => e.id === id)?.tema ?? id;
   const corto = (e: (typeof eventos)[number]) => `${e.dia} ${e.mes}`;
@@ -415,7 +524,10 @@ function Jornadas({ items }: { items: Inscripcion[] }) {
         <span className="text-soft">{todas ? `${personas.length} persona(s)` : `${lista.length} inscrito(s)`}</span>
         <button type="button" className="btn btn-ghost adm-btn" onClick={() => void exportar()}>Exportar XLSX</button>
         <button type="button" className="btn btn-ghost adm-btn" onClick={() => void navigator.clipboard.writeText(correos.join(", "))}>Copiar correos</button>
+        {jornada && <button type="button" className="btn adm-btn" disabled={!lista.length} title={lista.length ? undefined : "Esta jornada no tiene inscritos."} onClick={() => setAviso(lista)}>Enviar correo a todos los inscritos</button>}
+        {todas && <span className="text-[0.9rem] text-muted">Elige una jornada para enviar un correo a sus inscritos.</span>}
       </div>
+      {msg && <p role="status" className="mb-3 text-ink">{msg}</p>}
       <div className="adm-scroll">
         {todas ? (
           <table className="adm-table adm-table-jor">
@@ -437,27 +549,27 @@ function Jornadas({ items }: { items: Inscripcion[] }) {
           </table>
         ) : (
           <table className="adm-table">
-            <thead><tr><th>Nombre</th><th>Correo</th><th>Inscrito</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Correo</th><th>Inscrito</th><th>Correos recibidos</th><th><span className="sr-only">Acciones</span></th></tr></thead>
             <tbody>
-              {lista.map((i) => <tr key={i.id}><td>{i.nombre}</td><td>{i.correo}</td><td>{fecha(i.creadoEn)}</td></tr>)}
-              {!lista.length && <tr><td colSpan={3} className="py-8 text-center text-soft">Todavía no hay inscritos en esta jornada.</td></tr>}
+              {lista.map((i) => <tr key={i.id}><td>{i.nombre}</td><td>{i.correo}</td><td>{fecha(i.creadoEn)}</td><td className="text-[0.9rem] text-muted">{i.avisos?.length ? i.avisos.join(" · ") : "—"}</td><td><button type="button" className="btn btn-ghost adm-btn whitespace-nowrap" aria-label={`Enviar correo solo a ${i.nombre}`} onClick={() => setAviso([i])}>Enviar</button></td></tr>)}
+              {!lista.length && <tr><td colSpan={5} className="py-8 text-center text-soft">Todavía no hay inscritos en esta jornada.</td></tr>}
             </tbody>
           </table>
         )}
       </div>
+      {aviso && jornada && <AvisoJornada ev={jornada} items={aviso} onClose={() => setAviso(null)} onDone={setMsg} />}
     </div>
   );
 }
 
 /* ---------- acceso: solo la contraseña de administrador ---------- */
 function Login() {
-  const { signInAdmin } = useAuth();
   const [pass, setPass] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   async function enviar(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMsg("");
-    const err = await signInAdmin(pass);
+    const err = await entrarAdmin(pass);
     if (err) setMsg(err);
     setBusy(false);
   }
@@ -476,7 +588,7 @@ function Login() {
 
 /* ---------- página ---------- */
 export default function Admin() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAdminSession();
   const [tab, setTab] = useState<"post" | "spon" | "men" | "jur" | "ev">("post");
   const [insc, setInsc] = useState<Inscripcion[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -485,7 +597,7 @@ export default function Admin() {
   const [jurados, setJurados] = useState<ExpertoDoc[]>([]);
   const [error, setError] = useState("");
   // Esto solo decide qué se muestra; quien protege los datos son las reglas de Firestore.
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const isAdmin = Boolean(user);
 
   useEffect(() => {
     if (!isAdmin || !db) return;
@@ -510,7 +622,7 @@ export default function Admin() {
     <>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <h1 className="title h-lg">Panel de administración</h1>
-        <button type="button" className="link-btn link-danger" onClick={() => void signOut()}>Cerrar sesión</button>
+        <button type="button" className="link-btn link-danger" onClick={() => void salirAdmin()}>Salir del panel</button>
       </div>
       <div className="adm-tabs" role="tablist" aria-label="Secciones">
         <button role="tab" aria-selected={tab === "post"} onClick={() => setTab("post")}>Postulaciones ({posts.length})</button>

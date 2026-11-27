@@ -27,6 +27,8 @@ export type Jornada = {
   modalidad: "virtual" | "presencial" | "cierre";
   /** Solo las jornadas virtuales tienen id: son las que admiten inscripción. */
   id?: string;
+  /** Hora de inicio, hora de Perú (por ejemplo "7:00 p.m."). Sin ella se muestra «Por confirmar». */
+  hora?: string;
   /** Enlace de la transmisión; se muestra a quien se inscribió cuando exista ([TBD-06]). */
   enlace?: string;
   /** Qué es el tema (definición, sin prometer contenido del programa). Editable. */
@@ -37,7 +39,7 @@ export type Jornada = {
 
 // Kick-off: 27/11 (confirmado). Cierre y final marcados con modalidad propia.
 export const cronograma: Jornada[] = [
-  { id: "kickoff", fecha: "2026-11-27", dia: "27", mes: "NOV", tema: "Kick off y storytelling con datos", modalidad: "virtual", descripcion: "Arranque de Data League 2026. El storytelling con datos es el arte de contar una historia clara a partir de cifras y gráficos, para que las personas entiendan y actúen." },
+  { id: "kickoff", fecha: "2026-11-27", dia: "27", mes: "NOV", tema: "Kick off y storytelling con datos", modalidad: "virtual", hora: "7:00 p.m.", enlace: "https://meet.google.com/vix-mvqm-rxc", flyer: "/talleres/taller_storytelling.jpg", descripcion: "Arranque de Data League 2026. El storytelling con datos es el arte de contar una historia clara a partir de cifras y gráficos, para que las personas entiendan y actúen." },
   { fecha: "2026-11-29", dia: "29", mes: "NOV", tema: "Cierre de postulaciones, 23:59", modalidad: "cierre" },
   { id: "ml", fecha: "2026-11-30", dia: "30", mes: "NOV", tema: "Machine Learning", modalidad: "virtual", descripcion: "El machine learning (aprendizaje automático) es la rama de la inteligencia artificial en la que los modelos aprenden patrones a partir de datos para predecir o clasificar." },
   { id: "ia", fecha: "2026-12-01", dia: "01", mes: "DIC", tema: "IA con aplicaciones y MVP", modalidad: "virtual", descripcion: "Cómo llevar la inteligencia artificial a aplicaciones reales y armar un MVP: la versión mínima de un producto, suficiente para probar una idea." },
@@ -55,17 +57,23 @@ export const requisitos = [
   "Elegir un track para tu desafío.",
 ];
 
-// Nombres por confirmar con los logos originales ([TBD-07]).
-export const aliados = {
-  institucionales: [
-    "DMC Institute",
-    "Data Science Research Perú",
-    "Facultad de Ingeniería Económica, Estadística y Ciencias Sociales, UNI",
-  ],
-  /** Logos en public/aliados. `enlace`: su Instagram (o, si no tiene, otra red oficial). Sin enlace, el logo no es clicable. */
-  comunidades: [
-    { nombre: "Developer Student Club UNI", logo: "/aliados/dsc-uni.png", enlace: "https://www.instagram.com/dsc_uni/" },
+export type Aliado = { nombre: string; logo?: string; enlace?: string };
+
+/**
+ * Quienes hacen la liga, en 3 niveles. Logos en public/aliados; sin logo se muestra el nombre.
+ * `enlace`: su Instagram (o, si no tiene, otra red oficial). Sin enlace, la tarjeta no es clicable.
+ */
+export const aliados: { coorganizadores: Aliado[]; sponsors: Aliado[]; aliados: Aliado[] } = {
+  coorganizadores: [
     { nombre: "Unicode", logo: "/aliados/unicode.png", enlace: "https://www.instagram.com/cc.unicode/" },
+    { nombre: "Sipremo", logo: "/aliados/sipremo.png", enlace: "https://www.instagram.com/sipremo_unalm/" },
+  ],
+  sponsors: [
+    { nombre: "DMC Institute", logo: "/aliados/logo-dmc-institute-02.png", enlace: "https://www.linkedin.com/company/dmc-institute/" },
+    { nombre: "Data Science Research Perú", logo: "/aliados/dsrp.png", enlace: "https://www.linkedin.com/school/data-science-research-peru/" },
+  ],
+  aliados: [
+    { nombre: "Facultad de Ingeniería Económica, Estadística y Ciencias Sociales, UNI", logo: "/aliados/fieecs-uni.webp" },
     { nombre: "Centro Cultural Luis Felipe de las Casas", logo: "/aliados/cclfc-uni.png", enlace: "https://www.facebook.com/CCLFC.FIEECS/" },
     { nombre: "DSC PUCP", logo: "/aliados/dsc-pucp.png", enlace: "https://www.instagram.com/dsc.pucp/" },
     { nombre: "IEEE CIS UNMSM", logo: "/aliados/ieee-cis-unmsm.png", enlace: "https://www.instagram.com/ieeecisunmsm/" },

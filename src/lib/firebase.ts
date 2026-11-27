@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { browserSessionPersistence, connectAuthEmulator, getAuth, initializeAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
 const useEmulators = import.meta.env.VITE_USE_EMULATORS === "true";
@@ -26,4 +26,17 @@ export const db = app ? getFirestore(app) : null;
 if (useEmulators && auth && db) {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+/**
+ * Sesión aparte para el panel /admin: la contraseña de administración abre solo esa vista y no reemplaza
+ * la cuenta personal con la que se navega el resto de la web. Dura lo que la pestaña (sessionStorage).
+ */
+const adminApp = firebaseConfigured ? initializeApp(config, "admin") : null;
+export const adminAuth = adminApp ? initializeAuth(adminApp, { persistence: browserSessionPersistence }) : null;
+export const adminDb = adminApp ? getFirestore(adminApp) : null;
+
+if (useEmulators && adminAuth && adminDb) {
+  connectAuthEmulator(adminAuth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(adminDb, "127.0.0.1", 8080);
 }

@@ -4,7 +4,9 @@ import type { User } from "firebase/auth";
 import { db } from "./firebase";
 import type { Jornada } from "../config";
 
-export type Inscripcion = { id: string; evento: string; uid: string; nombre: string; correo: string; creadoEn?: Timestamp };
+export type Inscripcion = { id: string; evento: string; uid: string; nombre: string; correo: string; creadoEn?: Timestamp;
+  /** Asuntos de los avisos por correo que ya recibió (los agrega el panel de administración). */
+  avisos?: string[] };
 
 export const inscripcionId = (evento: string, uid: string) => `${evento}_${uid}`;
 

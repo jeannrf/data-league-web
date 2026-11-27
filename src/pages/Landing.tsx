@@ -3,7 +3,6 @@ import Network from "../components/Network";
 import Countdown from "../components/Countdown";
 import Line from "../components/Line";
 import Constellation from "../components/Constellation";
-import AlliesNet from "../components/AlliesNet";
 import Ambient from "../components/Ambient";
 import { useNavigate, Link } from "react-router";
 import AuthModal from "../components/AuthModal";
@@ -306,30 +305,35 @@ function Prizes() {
 }
 
 function Allies() {
-  const lista = [
-    ...aliados.institucionales.map((nombre) => ({ nombre, rol: "Aliado institucional" })),
+  const niveles = [
+    { id: "coorganizadores", titulo: <>Co-<span className="text-primary">organizadores</span></>, items: aliados.coorganizadores },
+    { id: "sponsors", titulo: <span className="text-primary">Sponsors</span>, items: aliados.sponsors },
+    { id: "aliados", titulo: <span className="text-primary">Aliados</span>, items: aliados.aliados },
   ];
   return (
     <section data-sec data-ambient="off" className="border-t border-line" aria-labelledby="h-aliados">
       <div className="wrap py-24 md:py-40">
-        <h2 id="h-aliados" data-node className="title h-xl">Quienes hacen la liga</h2>
-        <AlliesNet aliados={lista} />
-        <div className="mt-24 border-t border-line pt-12 md:mt-32 md:pt-16">
-          <h3 className="display text-[clamp(1.6rem,4vw,2.4rem)] leading-[1]">Comunidades <span className="text-primary">aliadas</span></h3>
-          <p className="mt-3 text-soft">Agrupaciones estudiantiles que impulsan la liga.</p>
-        </div>
-        <ul className="logos mt-8 md:mt-10">
-          {aliados.comunidades.map((c) => {
-            const inner = <><span className="logo-box"><img src={c.logo} alt="" loading="lazy" decoding="async" /></span><span className="logo-name">{c.nombre}</span></>;
-            return (
-              <li key={c.nombre}>
-                {c.enlace
-                  ? <a href={c.enlace} target="_blank" rel="noopener noreferrer" className="logo-card" aria-label={`${c.nombre} (abre su perfil en otra pestaña)`}>{inner}</a>
-                  : <div className="logo-card">{inner}</div>}
-              </li>
-            );
-          })}
-        </ul>
+        <h2 id="h-aliados" data-node className="title h-xl text-center">Quienes hacen la liga</h2>
+        {niveles.map((n, i) => (
+          <div key={n.id} className={i === 0 ? "mt-14 md:mt-20" : "mt-16 border-t border-line pt-12 md:mt-24 md:pt-16"}>
+            <h3 id={`h-${n.id}`} className="display text-center text-[clamp(1.6rem,4vw,2.4rem)] leading-[1]">{n.titulo}</h3>
+            <ul className="logos mt-8 md:mt-10" aria-labelledby={`h-${n.id}`}>
+              {n.items.map((c) => {
+                const inner = <>
+                  <span className="logo-box">{c.logo ? <img src={c.logo} alt="" loading="lazy" decoding="async" /> : <span className="logo-text">{c.nombre}</span>}</span>
+                  {c.logo && <span className="logo-name">{c.nombre}</span>}
+                </>;
+                return (
+                  <li key={c.nombre}>
+                    {c.enlace
+                      ? <a href={c.enlace} target="_blank" rel="noopener noreferrer" className="logo-card" aria-label={`${c.nombre} (abre su perfil en otra pestaña)`}>{inner}</a>
+                      : <div className="logo-card">{inner}</div>}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </div>
     </section>
   );

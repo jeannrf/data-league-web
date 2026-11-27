@@ -10,7 +10,6 @@ export default function Flyer({ e }: { e: Jornada }) {
       {e.flyer
         ? <img src={e.flyer} alt={`Flyer de la jornada: ${e.tema}`} />
         : <div className="flyer-vacio" role="img" aria-label="Flyer de la jornada, aún sin publicar"><span>Flyer</span></div>}
-      {e.flyer && <a className="link-btn mt-3 inline-block" href={e.flyer} download={`data-league-${e.id ?? e.fecha}`}>Descargar flyer</a>}
     </figure>
   );
 }
